@@ -359,6 +359,7 @@ MODULE State_Diag_Mod
      REAL(f4),  POINTER :: ProdSO4fromSRHOBr          (:,:,:)
      REAL(f4),  POINTER :: ProdSO4fromO3s             (:,:,:)
      REAL(f4),  POINTER :: LossHNO3onSeaSalt          (:,:,:) 
+     REAL(f4),  POINTER :: ProdSO4fromCloudMetalConc  (:,:,:) !SJS 
      LOGICAL :: Archive_ProdSO2fromDMSandOH        
      LOGICAL :: Archive_ProdSO2fromDMSandNO3       
      LOGICAL :: Archive_ProdSO2fromDMS             
@@ -376,6 +377,7 @@ MODULE State_Diag_Mod
      LOGICAL :: Archive_ProdSO4fromSRHOBr          
      LOGICAL :: Archive_ProdSO4fromO3s             
      LOGICAL :: Archive_LossHNO3onSeaSalt          
+     LOGICAL :: Archive_ProdSO4fromCloudMetalConc !SJS
 
      !----------------------------------------------------------------------
      ! Specialty Simulation Diagnostic Arrays
@@ -995,6 +997,7 @@ CONTAINS
     State_Diag%ProdSO4fromSRHOBr                   => NULL()
     State_Diag%ProdSO4fromO3s                      => NULL()
     State_Diag%LossHNO3onSeaSalt                   => NULL() 
+    State_Diag%ProdSO4fromCloudMetalConc           => NULL() !SJS 
     State_Diag%Archive_ProdSO2fromDMSandOH         = .FALSE. 
     State_Diag%Archive_ProdSO2fromDMSandNO3        = .FALSE. 
     State_Diag%Archive_ProdSO2fromDMS              = .FALSE.   
@@ -1012,6 +1015,7 @@ CONTAINS
     State_Diag%Archive_ProdSO4fromSRHOBr           = .FALSE.
     State_Diag%Archive_ProdSO4fromO3s              = .FALSE.
     State_Diag%Archive_LossHNO3onSeaSalt           = .FALSE. 
+    State_Diag%Archive_ProdSO4fromCloudMetalConc   = .FALSE. !SJS
 
     ! Rn-Pb-Be simulation diagnostics
     State_Diag%PbFromRnDecay                       => NULL()
@@ -3627,6 +3631,26 @@ CONTAINS
           IF ( RC /= GC_SUCCESS ) RETURN
        ENDIF
 
+       ! SJS 20190102
+       !--------------------------------------------------------------------
+       ! Production of SO4 from cloud save Fe_tot concentration
+       !--------------------------------------------------------------------
+       arrayID = 'State_Diag%ProdSO4fromCloudMetalConc'
+       diagID  = 'ProdSO4fromCloudMetalConc'
+       CALL Check_DiagList( am_I_Root, Diag_List, diagID, Found, RC )
+       IF ( Found ) THEN
+          IF ( am_I_Root ) WRITE( 6, 20 ) ADJUSTL( arrayID ), TRIM( diagID )
+          ALLOCATE( State_Diag%ProdSO4fromCloudMetalConc( IM, JM, LM ), STAT=RC ) 
+          CALL GC_CheckVar( arrayID, 0, RC )
+          IF ( RC /= GC_SUCCESS ) RETURN
+          State_Diag%ProdSO4fromCloudMetalConc = 0.0_f4
+          State_Diag%Archive_ProdSO4fromCloudMetalConc = .TRUE.
+          CALL Register_DiagField( am_I_Root, diagID,                        &
+                                   State_Diag%ProdSO4fromCloudMetalConc,     &
+                                   State_Chm, State_Diag, RC                )
+          IF ( RC /= GC_SUCCESS ) RETURN
+       ENDIF
+
        !-------------------------------------------------------------------
        ! Aerosol mass of black carbon [ug/m3]
        !-------------------------------------------------------------------
@@ -3967,6 +3991,8 @@ CONTAINS
                 diagID = 'TotalOA'
              CASE( 21 )
                 diagID = 'TotalOC'
+             CASE( 22 )
+                diagID = 'ProdSO4fromCloudMetalConc' !SJS
           END SELECT
 
           ! Exit if any of the above are in the diagnostic list
@@ -6962,6 +6988,14 @@ CONTAINS
        State_Diag%LossHNO3onSeaSalt => NULL()
     ENDIF
 
+    !SJS 20190102
+    IF ( ASSOCIATED( State_Diag%ProdSO4fromCloudMetalConc ) ) THEN
+       DEALLOCATE( State_Diag%ProdSO4fromCloudMetalConc, STAT=RC )
+       CALL GC_CheckVar('State_Diag%ProdSO4fromCloudMetalConc',2,RC)
+       IF ( RC /= GC_SUCCESS ) RETURN
+       State_Diag%ProdSO4fromCloudMetalConc => NULL()
+    ENDIF
+
 #if defined( MODEL_GEOS )
     IF ( ASSOCIATED( State_Diag%CH4pseudoFlux ) ) THEN
        DEALLOCATE( State_Diag%CH4pseudoFlux, STAT=RC )
@@ -8610,6 +8644,12 @@ CONTAINS
     ELSE IF ( TRIM( Name_AllCaps ) == 'PRODSO4FROMO3S' ) THEN
        IF ( isDesc    ) Desc  = 'Production of SO4 from O3s'
        IF ( isUnits   ) Units = 'kg S s-1'
+       IF ( isRank    ) Rank  =  3
+
+    ! SJS 20190102
+    ELSE IF ( TRIM( Name_AllCaps )=='PRODSO4FROMCLOUDMETALCONC') THEN
+       IF ( isDesc    ) Desc  = 'Total Fe concentration'
+       IF ( isUnits   ) Units = 'ng m-3'
        IF ( isRank    ) Rank  =  3
 
     ELSE IF ( TRIM( Name_AllCaps ) == 'LOSSHNO3ONSEASALT' ) THEN

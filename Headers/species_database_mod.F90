@@ -3132,7 +3132,18 @@ CONTAINS
              WD_KcScaleFac = KcScale
              WD_RainoutEff = RainEff
 
-          CASE( 'SO4' )
+          ! Add new tracer SO4P, SJS 20190102
+          !---------------------------------
+          CASE( 'SO4', 'SO4P' )
+
+             ! These have identical properties except for the names
+             SELECT CASE( TRIM( Name ) )
+                CASE('SO4')
+                   FullName = 'Sulfate'
+                CASE('SO4P')
+                   FullName = 'Primary Sulfate'
+             END SELECT
+          !---------------------------------
 
              ! Halve the Kc (cloud condensate -> precip) rate
              ! for the temperature range 237 K <= T < 258 K.
@@ -3147,7 +3158,7 @@ CONTAINS
              ! Minimum Vd over land     : 0.01 cm/s
              DvzMinVal     = (/ 0.01_fp, 0.01_fp /)
 
-             FullName      = 'Sulfate'
+             FullName      = FullName
              Formula       = 'SO4'
              MW_g          = 96.0_fp
              Is_Gas        = F

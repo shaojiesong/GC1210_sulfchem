@@ -2694,7 +2694,7 @@
 
       REAL(fp)              :: KaqO2, L4, L4S, MnII, FeIII
       REAL(fp)              :: DUST,  Mn_ant,  Mn_nat
-      REAL(fp)              :: Mn_tot, Mn_d,    Fe_d
+      REAL(fp)              :: Mn_tot, Mn_d, Fe_d, Mn_d_ant, Mn_d_nat !SJS
       REAL(fp)              :: Fe_ant, Fe_nat,  Fe_tot
       REAL(fp)              :: Fe_d_ant, Fe_d_nat
 
@@ -2815,6 +2815,7 @@
 !$OMP+PRIVATE( L4,    L4S,     KaqO2,  DUST, Mn_ant, Mn_nat, Mn_tot    )
 !$OMP+PRIVATE( Fe_ant, Fe_nat, Fe_tot, Fe_d, Mn_d,   FeIII,  MnII      )
 !$OMP+PRIVATE( Fe_d_ant, Fe_d_nat                                      )
+!$OMP+PRIVATE( Mn_d_ant, Mn_d_nat                                      ) !SJS
 !$OMP+SCHEDULE( DYNAMIC )
       DO L = 1, LLPAR 
       DO J = 1, JJPAR
@@ -3180,7 +3181,8 @@
             ! Store the cloud pH
             pHCloud(I,J,L) = -1.0e+0_fp * log10(HPLUS)
 
-            IF ( Input_Opt%LMETALCATSO2 ) THEN
+            ! SJS 20190102
+            ! IF ( Input_Opt%LMETALCATSO2 ) THEN
 
                !--------------------------------------------------------
                ! Metal catalyzed oxidation of SO2 pathway
@@ -3226,18 +3228,25 @@
                Mn_tot = Mn_ant + Mn_nat
                Fe_tot = Fe_ant + Fe_nat
 
+             ! SJS 20190102
+             IF ( Input_Opt%LMETALCATSO2 ) THEN
+
                ! Convert Mn and Fe [ng m-3] to [mole l-1]
 
+               ! Assume 5% solubility for Mn (Shao Jingyuan), SJS 20190102
                ! Assume that 50% of Mn is dissolved [Spokes et al., 1994]
                ! Hardcoded MW for Mn
                IF ( LWC > 0e+0_fp ) THEN
                   ! Units: ng/m3 * (g/ng) / (g/mol) / (m3 H2O / m3 air) * (m3/L)
-                  Mn_d = Mn_tot * 1e-9_fp / 54.94e+0_fp / LWC * 1e-3_fp
-                  Mn_d = Mn_d * 0.5e+0_fp
+                  Mn_d_ant = Mn_ant * 1e-9_fp / 54.94e+0_fp / LWC * 1e-3_fp
+                  Mn_d_nat = Mn_nat * 1e-9_fp / 54.94e+0_fp / LWC * 1e-3_fp
+                  Mn_d = Mn_d_ant * 0.5e+0_fp +
+     &                   Mn_d_nat * 0.05e+0_fp
                ELSE
                   Mn_d = 0e+0_fp
                ENDIF
 
+               ! Change solubility of dust Fe to 0.45% (Shao Jingyuan), SJS 20190102
                ! Solubility of Fe is 10% for anthropogenic, and 1% for dust
                IF ( LWC > 0e+0_fp ) THEN
                   Fe_d_ant = Fe_ant * 1e-9_fp /
@@ -3247,7 +3256,7 @@
      &                       State_Chm%SpcData(id_pFe)%Info%emMW_g /
      &                       LWC * 1e-3_fp
                   Fe_d     = Fe_d_ant * 0.1e+0_fp +
-     &                       Fe_d_nat * 0.01e+0_fp
+     &                       Fe_d_nat * 0.0045e+0_fp
                ELSE
                   Fe_d     = 0e+0_fp
                ENDIF
@@ -3951,6 +3960,13 @@
             IF ( State_Diag%Archive_ProdSO4fromO3s ) THEN
                State_Diag%ProdSO4fromO3s(I,J,L) = 
      &            ( L3S_1 * State_Met%AD(I,J,L) / TCVV_S ) / DTCHEM
+            ENDIF
+
+            ! SJS 20190102
+            ! save Fe_tot concentration [ng/m3]
+            IF ( State_Diag%Archive_ProdSO4fromCloudMetalConc ) THEN
+               State_Diag%ProdSO4fromCloudMetalConc(I,J,L) =
+     &            Fe_tot
             ENDIF
 
             !-----------------------------------------------------------
