@@ -3134,7 +3134,8 @@ CONTAINS
 
           ! Add new tracer SO4P, SJS 20190102
           !---------------------------------
-          CASE( 'SO4', 'SO4P' )
+          CASE( 'SO4', 'SO4P', 'SO4P0', 'SO4P1', 'SO4P2', 'SO4P3', &
+                'SO4P4', 'SO4P5', 'SO4P6', 'SO4P7' )
 
              ! These have identical properties except for the names
              SELECT CASE( TRIM( Name ) )
@@ -3142,6 +3143,22 @@ CONTAINS
                    FullName = 'Sulfate'
                 CASE('SO4P')
                    FullName = 'Primary Sulfate'
+                CASE('SO4P0')
+                   FullName = 'Secondary Sulfate KPP'
+                CASE('SO4P1')
+                   FullName = 'Secondary Sulfate Gas'
+                CASE('SO4P2')
+                   FullName = 'Secondary Sulfate Cloud H2O2'
+                CASE('SO4P3')
+                   FullName = 'Secondary Sulfate Cloud O3'
+                CASE('SO4P4')
+                   FullName = 'Secondary Sulfate Cloud TMI O2'
+                CASE('SO4P5')
+                   FullName = 'Secondary Sulfate Cloud HOBr'
+                CASE('SO4P6')
+                   FullName = 'Secondary Sulfate Sea Salt'
+                CASE('SO4P7')
+                   FullName = 'Secondary Sulfate SR'
              END SELECT
           !---------------------------------
 

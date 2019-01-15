@@ -216,6 +216,7 @@
       INTEGER                       :: id_SF1
       INTEGER                       :: id_SO2
       INTEGER                       :: id_SO4
+      INTEGER                       :: id_SO4P2 !SJS
 
       CONTAINS
 !EOC
@@ -4160,6 +4161,9 @@
                Spc(I,J,L,id_SO4) = Spc(I,J,L,id_SO4) 
      &                           + GAINED * 96e+0_fp / 64e+0_fp
 
+               Spc(I,J,L,id_SO4P2) = Spc(I,J,L,id_SO4P2) !SJS 
+     &                           + GAINED * 96e+0_fp / 64e+0_fp
+
                Spc(I,J,L,N)      = Spc(I,J,L,N) *
      &                                          ( 1e+0_fp - WASHFRAC )
 
@@ -4542,6 +4546,9 @@
          ! In evap, SO2 comes back as SO4 (rjp, bmy, 3/23/03)
          IF ( N == id_SO2 ) THEN
             Spc(I,J,L,id_SO4) = Spc(I,J,L,id_SO4) 
+     &                        - ( WETLOSS * 96e+0_fp / 64e+0_fp )
+
+            Spc(I,J,L,id_SO4P2) = Spc(I,J,L,id_SO4P2) !SJS 
      &                        - ( WETLOSS * 96e+0_fp / 64e+0_fp )
 
 
@@ -5392,6 +5399,7 @@
       id_DUST1 = Ind_('DUST1')
       id_SO2   = Ind_('SO2'  )
       id_SO4   = Ind_('SO4'  )
+      id_SO4P2 = Ind_('SO4P2') !SJS
       id_H2O2  = Ind_('H2O2' )
 
       !-----------------------------------------------------------------

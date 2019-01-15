@@ -241,6 +241,13 @@
       REAL(fp),  ALLOCATABLE :: PMSA_DMS(:,:,:)
       REAL(fp),  ALLOCATABLE :: PSO2_DMS(:,:,:)
       REAL(fp),  ALLOCATABLE :: PSO4_SO2(:,:,:)
+      REAL(fp),  ALLOCATABLE :: PSO4P1_SO2(:,:,:) !SJS
+      REAL(fp),  ALLOCATABLE :: PSO4P2_SO2(:,:,:)
+      REAL(fp),  ALLOCATABLE :: PSO4P3_SO2(:,:,:)
+      REAL(fp),  ALLOCATABLE :: PSO4P4_SO2(:,:,:)
+      REAL(fp),  ALLOCATABLE :: PSO4P5_SO2(:,:,:)
+      REAL(fp),  ALLOCATABLE :: PSO4P6_SO2(:,:,:)
+      REAL(fp),  ALLOCATABLE :: PSO4P7_SO2(:,:,:)
       REAL(fp),  ALLOCATABLE :: PSO4_SS(:,:,:)
       REAL(fp),  ALLOCATABLE :: PNITs(:,:,:)
       REAL(fp),  ALLOCATABLE :: PNIT_dust(:,:,:,:) ! tdf
@@ -291,6 +298,9 @@
       INTEGER                :: id_SO4d1,  id_SO4d2,  id_SO4d3 
       INTEGER                :: id_SO4d4,  id_SO4s,   id_pFe
       INTEGER                :: id_HOBr,   id_SO4H1,  id_SO4H2
+      INTEGER                :: id_SO4P1,  id_SO4P2,  id_SO4P3 !SJS
+      INTEGER                :: id_SO4P4,  id_SO4P5,  id_SO4P6 
+      INTEGER                :: id_SO4P7 
 
       ! Species drydep ID flags
       INTEGER                :: DRYSO4s,   DRYNITs,   DRYSO4d1 
@@ -541,6 +551,13 @@
       PSO2_DMS   = 0e+0_fp
       PMSA_DMS   = 0e+0_fp
       PSO4_SO2   = 0e+0_fp
+      PSO4P1_SO2   = 0e+0_fp !SJS
+      PSO4P2_SO2   = 0e+0_fp
+      PSO4P3_SO2   = 0e+0_fp
+      PSO4P4_SO2   = 0e+0_fp
+      PSO4P5_SO2   = 0e+0_fp
+      PSO4P6_SO2   = 0e+0_fp
+      PSO4P7_SO2   = 0e+0_fp
       PSO4_SS    = 0e+0_fp
       PNITs      = 0e+0_fp
       PSO4_dust  = 0e+0_fp     ! tdf 04/17/08
@@ -3788,6 +3805,13 @@
          ! SO2 chemical loss rate  = SO4 production rate [v/v/timestep]
          ! Add L5S (qjc, 11/04/16)
          PSO4_SO2(I,J,L) = L1 + L2S + L3S + L4S + L5S + PSO4E + SR
+         PSO4P1_SO2(I,J,L) = L1 !SJS
+         PSO4P2_SO2(I,J,L) = L2S
+         PSO4P3_SO2(I,J,L) = L3S + SRo3
+         PSO4P4_SO2(I,J,L) = L4S
+         PSO4P5_SO2(I,J,L) = L5S + SRhobr
+         PSO4P6_SO2(I,J,L) = PSO4E
+         PSO4P7_SO2(I,J,L) = SR
 
          ! Production of sulfate on sea salt
          PSO4_ss (I,J,L) = PSO4F
@@ -6476,6 +6500,10 @@
       INTEGER           :: I,   J,    L,    N
       INTEGER           :: IBIN  ! tdf
       REAL(fp)          :: SO4, SO40, SO4s, SO40s 
+      REAL(fp)          :: SO4P1, SO4P10, SO4P2, SO4P20 !SJS 
+      REAL(fp)          :: SO4P3, SO4P30, SO4P4, SO4P40 
+      REAL(fp)          :: SO4P5, SO4P50, SO4P6, SO4P60 
+      REAL(fp)          :: SO4P7, SO4P70 
       REAL(fp)          :: PSO4d, SO40_dust ! tdf 04/07/08
 
       ! Arrays
@@ -6511,6 +6539,10 @@
 !$OMP+PRIVATE( I, J, L, SO4, SO4s, SO40, SO40s )
 !$OMP+PRIVATE( SO4d, SO40d, SO40_dust          ) ! tdf 04/07/08
 !$OMP+PRIVATE( IBIN, PSO4d, IDTRC              )
+!$OMP+PRIVATE( SO4P1, SO4P10, SO4P2, SO4P20 ) !SJS
+!$OMP+PRIVATE( SO4P3, SO4P30, SO4P4, SO4P40 )
+!$OMP+PRIVATE( SO4P5, SO4P50, SO4P6, SO4P60 )
+!$OMP+PRIVATE( SO4P7, SO4P70 )
 !$OMP+SCHEDULE( DYNAMIC ) 
       DO L = 1, LLPAR
       DO J = 1, JJPAR
@@ -6530,6 +6562,13 @@
 
          ! SO4 [v/v]
          SO40  = Spc(I,J,L,id_SO4)
+         SO4P10  = Spc(I,J,L,id_SO4P1) !SJS
+         SO4P20  = Spc(I,J,L,id_SO4P2)
+         SO4P30  = Spc(I,J,L,id_SO4P3)
+         SO4P40  = Spc(I,J,L,id_SO4P4)
+         SO4P50  = Spc(I,J,L,id_SO4P5)
+         SO4P60  = Spc(I,J,L,id_SO4P6)
+         SO4P70  = Spc(I,J,L,id_SO4P7)
          
          ! SO4 within coarse seasalt aerosol [v/v]
          SO40s = Spc(I,J,L,id_SO4s)
@@ -6548,6 +6587,13 @@
 
          ! SO4 production from SO2 [v/v/timestep]
          SO4 = SO40 + PSO4_SO2(I,J,L)
+         SO4P1 = SO4P10 + PSO4P1_SO2(I,J,L) !SJS
+         SO4P2 = SO4P20 + PSO4P2_SO2(I,J,L)
+         SO4P3 = SO4P30 + PSO4P3_SO2(I,J,L)
+         SO4P4 = SO4P40 + PSO4P4_SO2(I,J,L)
+         SO4P5 = SO4P50 + PSO4P5_SO2(I,J,L)
+         SO4P6 = SO4P60 + PSO4P6_SO2(I,J,L)
+         SO4P7 = SO4P70 + PSO4P7_SO2(I,J,L)
 
          !==============================================================
          ! SO4s (SO4 w/in seasalt aerosol) chemistry: 
@@ -6589,10 +6635,24 @@
 
          ! Error check
          IF ( SO4  < SMALLNUM ) SO4  = 0e+0_fp
+         IF ( SO4P1  < SMALLNUM ) SO4P1  = 0e+0_fp !SJS
+         IF ( SO4P2  < SMALLNUM ) SO4P2  = 0e+0_fp
+         IF ( SO4P3  < SMALLNUM ) SO4P3  = 0e+0_fp
+         IF ( SO4P4  < SMALLNUM ) SO4P4  = 0e+0_fp
+         IF ( SO4P5  < SMALLNUM ) SO4P5  = 0e+0_fp
+         IF ( SO4P6  < SMALLNUM ) SO4P6  = 0e+0_fp
+         IF ( SO4P7  < SMALLNUM ) SO4P7  = 0e+0_fp
          IF ( SO4s < SMALLNUM ) SO4s = 0e+0_fp
 
          ! Final concentrations [v/v]
          Spc(I,J,L,id_SO4)  = SO4
+         Spc(I,J,L,id_SO4P1)  = SO4P1 !SJS
+         Spc(I,J,L,id_SO4P2)  = SO4P2
+         Spc(I,J,L,id_SO4P3)  = SO4P3
+         Spc(I,J,L,id_SO4P4)  = SO4P4
+         Spc(I,J,L,id_SO4P5)  = SO4P5
+         Spc(I,J,L,id_SO4P6)  = SO4P6
+         Spc(I,J,L,id_SO4P7)  = SO4P7
          Spc(I,J,L,id_SO4s) = SO4s
 
          !tdf
@@ -8127,7 +8187,42 @@
       CALL GC_CheckVar( 'sulfate_mod.F:PSO4_SO2', 0, RC )
       IF ( RC /= GC_SUCCESS ) RETURN
       PSO4_SO2 = 0e+0_fp
+ 
+      ALLOCATE( PSO4P1_SO2( IIPAR, JJPAR, LLCHEM ), STAT=RC ) !SJS
+      CALL GC_CheckVar( 'sulfate_mod.F:PSO4P1_SO2', 0, RC )
+      IF ( RC /= GC_SUCCESS ) RETURN
+      PSO4P1_SO2 = 0e+0_fp
+ 
+      ALLOCATE( PSO4P2_SO2( IIPAR, JJPAR, LLCHEM ), STAT=RC )
+      CALL GC_CheckVar( 'sulfate_mod.F:PSO4P2_SO2', 0, RC )
+      IF ( RC /= GC_SUCCESS ) RETURN
+      PSO4P2_SO2 = 0e+0_fp
+ 
+      ALLOCATE( PSO4P3_SO2( IIPAR, JJPAR, LLCHEM ), STAT=RC )
+      CALL GC_CheckVar( 'sulfate_mod.F:PSO4P3_SO2', 0, RC )
+      IF ( RC /= GC_SUCCESS ) RETURN
+      PSO4P3_SO2 = 0e+0_fp
+ 
+      ALLOCATE( PSO4P4_SO2( IIPAR, JJPAR, LLCHEM ), STAT=RC )
+      CALL GC_CheckVar( 'sulfate_mod.F:PSO4P4_SO2', 0, RC )
+      IF ( RC /= GC_SUCCESS ) RETURN
+      PSO4P4_SO2 = 0e+0_fp
+ 
+      ALLOCATE( PSO4P5_SO2( IIPAR, JJPAR, LLCHEM ), STAT=RC )
+      CALL GC_CheckVar( 'sulfate_mod.F:PSO4P5_SO2', 0, RC )
+      IF ( RC /= GC_SUCCESS ) RETURN
+      PSO4P5_SO2 = 0e+0_fp
 
+      ALLOCATE( PSO4P6_SO2( IIPAR, JJPAR, LLCHEM ), STAT=RC )
+      CALL GC_CheckVar( 'sulfate_mod.F:PSO4P6_SO2', 0, RC )
+      IF ( RC /= GC_SUCCESS ) RETURN
+      PSO4P6_SO2 = 0e+0_fp
+ 
+      ALLOCATE( PSO4P7_SO2( IIPAR, JJPAR, LLCHEM ), STAT=RC )
+      CALL GC_CheckVar( 'sulfate_mod.F:PSO4P7_SO2', 0, RC )
+      IF ( RC /= GC_SUCCESS ) RETURN
+      PSO4P7_SO2 = 0e+0_fp
+ 
       ALLOCATE( PSO4_ss( IIPAR, JJPAR, LLCHEM ), STAT=RC )
       CALL GC_CheckVar( 'sulfate_mod.F:PSO4_ss', 0, RC )
       IF ( RC /= GC_SUCCESS ) RETURN
@@ -8241,6 +8336,13 @@
       id_SF1   = Ind_('SF1'      )
       id_SO2   = Ind_('SO2'      )
       id_SO4   = Ind_('SO4'      )
+      id_SO4P1 = Ind_('SO4P1'    ) !SJS
+      id_SO4P2 = Ind_('SO4P2'    )
+      id_SO4P3 = Ind_('SO4P3'    )
+      id_SO4P4 = Ind_('SO4P4'    )
+      id_SO4P5 = Ind_('SO4P5'    )
+      id_SO4P6 = Ind_('SO4P6'    )
+      id_SO4P7 = Ind_('SO4P7'    )
       id_SO4aq = Ind_('SO4aq'    )
       id_SO4d1 = Ind_('SO4D1'    )
       id_SO4d2 = Ind_('SO4D2'    )
@@ -8320,6 +8422,13 @@
       IF ( ALLOCATED( PNITs      ) ) DEALLOCATE( PNITs      )
       IF ( ALLOCATED( PSO2_DMS   ) ) DEALLOCATE( PSO2_DMS   )
       IF ( ALLOCATED( PSO4_SO2   ) ) DEALLOCATE( PSO4_SO2   )
+      IF ( ALLOCATED( PSO4P1_SO2 ) ) DEALLOCATE( PSO4P1_SO2 ) !SJS
+      IF ( ALLOCATED( PSO4P2_SO2 ) ) DEALLOCATE( PSO4P2_SO2 )
+      IF ( ALLOCATED( PSO4P3_SO2 ) ) DEALLOCATE( PSO4P3_SO2 )
+      IF ( ALLOCATED( PSO4P4_SO2 ) ) DEALLOCATE( PSO4P4_SO2 )
+      IF ( ALLOCATED( PSO4P5_SO2 ) ) DEALLOCATE( PSO4P5_SO2 )
+      IF ( ALLOCATED( PSO4P6_SO2 ) ) DEALLOCATE( PSO4P6_SO2 )
+      IF ( ALLOCATED( PSO4P7_SO2 ) ) DEALLOCATE( PSO4P7_SO2 )
 #if   defined( TOMAS )
       IF ( ALLOCATED( PSO4_SO2AQ ) ) DEALLOCATE( PSO4_SO2AQ ) 
       IF ( ALLOCATED( SO4_ANTH   ))  DEALLOCATE( SO4_ANTH   )
