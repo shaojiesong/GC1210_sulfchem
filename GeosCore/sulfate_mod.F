@@ -2691,7 +2691,7 @@
       REAL(fp)              :: AlkA,   AlkC
       REAL(fp)              :: Kt1,    Kt2,     AREASS1, AREASS2
       REAL(fp)              :: PSO4E,  PSO4F,   Kt1N,    Kt2N
-      REAL(fp)              :: XX
+      REAL(fp)              :: XX,     IonStr
       REAL(fp)              :: HPLUS,  SO4nss, TNH3,   TNO3,  GNO3, ANIT
       REAL(fp)              :: LSTOT,  ALKdst, ALKss,  ALKds, NH3
       REAL(fp)              :: SSCvv,  aSO4,   SO2_sr, SR,    TANIT
@@ -2818,7 +2818,7 @@
 !$OMP+PRIVATE( RK2, RK, RKT, SO2_cd, L1, Ld, L2, L2S, L3, L3S, FC, LWC )
 !$OMP+PRIVATE( KaqH2O2, KaqO3, ALK, ALK1, ALK2                         )
 !$OMP+PRIVATE( Kt1, Kt2, AREASS1, AREASS2, SO2_ss, Kt1N, Kt2N          )
-!$OMP+PRIVATE( PSO4E, PSO4F, XX                                        )
+!$OMP+PRIVATE( PSO4E, PSO4F, XX, IonStr                                )
 !$OMP+PRIVATE( HPLUS, SO4nss, TNH3, TNO3,  GNO3, ANIT,   LSTOT, ALKdst )
 !$OMP+PRIVATE( ALKds, ALKss,  NH3,  SSCvv, aSO4, SO2_sr, SR,    TANIT  )
 !$OMP+PRIVATE( BULK,  SIZE_RES,     RC, AlkA, AlkC                     )
@@ -3193,7 +3193,7 @@
 		
             ! Calculate cloud pH
 	    CALL GET_HPLUS( SO4nss, TNH3, TNO3,     SO2_ss, TK, 
-     &                        PATM,   LWC,  HPLUS_45, HPLUS )
+     &                        PATM,   LWC,  HPLUS_45, HPLUS, IonStr )
 
             ! Store the cloud pH
             pHCloud(I,J,L) = -1.0e+0_fp * log10(HPLUS)
@@ -3307,7 +3307,7 @@
 
             ! Compute aqueous rxn rates for SO2
             CALL AQCHEM_SO2( LWC,     TK,    PATM,    SO2_ss, H2O20, 
-     &                       O3,      HPLUS, MnII,    FeIII,
+     &                       O3,      HPLUS, IonStr,  MnII,    FeIII,
      &                       KaqH2O2, KaqO3, KaqO3_1, KaqO2,
      &                       HSO3aq,  SO3aq ) 
 
@@ -3776,6 +3776,7 @@
             SRhobr       = 0.e+0_fp
             SRo3         = 0.e+0_fp
             HPLUS        = 0.e+0_fp
+            IonStr       = 0.e+0_fp
 
             ! Store HSO3aq, SO3aq for use in gckpp_HetRates.F90
             ! Avoid divide-by-zero errors
@@ -5125,7 +5126,7 @@
 ! !INTERFACE:
 !
       SUBROUTINE GET_HPLUS( SO4nss, TNH3, TNO3, SO2,
-     &                      T,      PRES, LWC,  iHPLUS, HPLUS )
+     &                      T, PRES, LWC,  iHPLUS, HPLUS, IonStr )
 !
 ! !USES:
 !
@@ -5146,6 +5147,7 @@
 ! !OUTPUT PARAMETERS: 
 !
       REAL(fp),  INTENT(OUT)   :: HPLUS  ! Calculated [H+] [M]
+      REAL(fp),  INTENT(OUT)   :: IonStr ! Calculated Ionic Strength [M]
 ! !REMARKS:
 !  Calculation:
 !  ============================================================================
@@ -5303,6 +5305,12 @@
       ENDDO
 
       HPLUS = 10.0e+0_fp**(-newpH)
+
+      ! SJS
+      ! Compute ionic strength, estimates
+      kNH3p  = kNH3 ( PRES, T, LWC, HPLUS, TNH3, Kw_T )
+      IonStr = HPLUS * ( 1.e+0_fp + kNH3p ) + SO4nss
+      IF ( IonStr .LT. 0.0e+0_fp ) IonStr = 0.0e+0_fp
 
       END SUBROUTINE GET_HPLUS
 !EOC
@@ -5918,7 +5926,7 @@
 ! !INTERFACE:
 !
       SUBROUTINE AQCHEM_SO2( LWC,     T,     P,       SO2,   H2O2, 
-     &                       O3,      Hplus, MnII,    FeIII, 
+     &                       O3,      Hplus, Ionstr,  MnII,  FeIII, 
      &                       KaqH2O2, KaqO3, KaqO3_1, KaqO2,
      &                       HSO3aq,  SO3aq ) 
 !
@@ -5931,6 +5939,7 @@
       REAL(fp), INTENT(IN)  :: H2O2    ! H2O2 mixing ratio [v/v]
       REAL(fp), INTENT(IN)  :: O3      ! O3   mixing ratio [v/v]
       REAL(fp), INTENT(IN)  :: HPLUS   ! Concentration of H+ ion (i.e. pH) [v/v]
+      REAL(fp), INTENT(IN)  :: Ionstr  ! Ionic strength [mole/l]
       REAL(fp), INTENT(IN)  :: MnII    ! Concentration of MnII [mole/l]
       REAL(fp), INTENT(IN)  :: FeIII   ! Concentration of FeIII [mole/l]
 !
@@ -6159,9 +6168,29 @@
       ! ===================================================================
 
       ! Conversion rate from SO2 to SO4 via reaction with O2 (met cat)
-      KaqO2 = FHCSO2 * XSO2g * ( (750e+0_fp * MnII ) +
-     &       ( 2600e+0_fp * FeIII ) + (1e+10_fp * MnII * FeIII ) ) *
-     &        LWC * R * T   ! [s-1]
+!      KaqO2 = FHCSO2 * XSO2g * ( (750e+0_fp * MnII ) +
+!     &       ( 2600e+0_fp * FeIII ) + (1e+10_fp * MnII * FeIII ) ) *
+!     &        LWC * R * T   ! [s-1]
+
+      ! SJS
+      IF ( Hplus <= 6.3e-5_fp ) THEN
+
+         KaqO2 = FHCSO2 * XSO2g * (2.5e+13_fp * MnII * FeIII) *
+     &           EXP( -8.4e+3_fp * (1.e+0_fp/T-1.e+0_fp/297.e+0_fp) ) *
+     &           ( Hplus ** 0.67e+0_fp ) * 
+     &           LWC * R * T   ! [s-1]
+
+      ELSE
+         
+         KaqO2 = FHCSO2 * XSO2g * (3.7e+7_fp * MnII * FeIII) *
+     &           EXP( -8.4e+3_fp * (1.e+0_fp/T-1.e+0_fp/297.e+0_fp) ) *
+     &           ( Hplus ** -0.74e+0_fp ) * 
+     &           LWC * R * T   ! [s-1]
+
+      ! Adjust according to ionic strength, SJS
+      KaqO2 = KaqO2 * ( 1.e+1_fp ** (-2.e+0_fp*(Ionstr**0.5e+0_fp)) )
+       
+      ENDIF
 
       END SUBROUTINE AQCHEM_SO2
 !EOC
