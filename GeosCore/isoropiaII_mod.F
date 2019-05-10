@@ -216,6 +216,7 @@
       LOGICAL, SAVE            :: FIRST = .TRUE.
       INTEGER, SAVE            :: id_HNO3, id_NH3,  id_NH4
       INTEGER, SAVE            :: id_NIT,  id_SALA, id_SO4
+      INTEGER, SAVE            :: id_DST1, id_pFe !SJS
 
       ! Scalars
       INTEGER                  :: I,    J,    L,    N
@@ -295,6 +296,8 @@
          id_NIT  = Ind_('NIT' )
          id_SALA = Ind_('SALA')
          id_SO4  = Ind_('SO4' )
+         id_DST1 = Ind_('DST1') !SJS
+         id_pFe  = Ind_('PFE' )
 
          ! Make sure certain tracers are defined
          IF ( id_SO4 <= 0 ) THEN
@@ -319,6 +322,19 @@
          ENDIF
          IF ( id_SALA <= 0 ) THEN
             ErrMsg = 'SALA is an undefined species!'
+            CALL GC_Error( ErrMsg, RC, ThisLoc )
+            RETURN
+         ENDIF
+
+         ! SJS 20190510
+         IF ( id_DST1 <= 0 ) THEN
+            ErrMsg = 'DST1 is an undefined species!'
+            CALL GC_Error( ErrMsg, RC, ThisLoc )
+            RETURN
+         ENDIF
+
+         IF ( id_pFe <= 0 ) THEN
+            ErrMsg = 'PFE is an undefined species!'
             CALL GC_Error( ErrMsg, RC, ThisLoc )
             RETURN
          ENDIF
@@ -473,9 +489,28 @@
 !===     &                                 ( 24.312e+0_fp * VOL  )
 
             ! Set Ca, K, Mg to zero for time being (hotp, bmy, 2/1/10)
-            TCA      = 0e+0_fp
-            TK       = 0e+0_fp
-            TMG      = 0e+0_fp
+!            TCA      = 0e+0_fp
+!            TK       = 0e+0_fp
+!            TMG      = 0e+0_fp
+!
+            ! Set Ca, K, Mg to non-zero, SJS 20190510
+            ! Total Ca2+ (3% by weight of fine dust) [mole/m3]
+            TCA=Spc(I,J,L,id_DST1) * 0.03e+0_fp * 1.d3 /
+     &          ( 40.08e+0_fp * VOL )
+
+            ! Total K+ (scaled w/ a 1.4 molar factor tot Fe) [mole/m3]
+!            IF ( id_pFe > 0 ) THEN
+               TK=(Spc(I,J,L,id_pFe) + Spc(I,J,L,id_DST1)*35e-3_fp) *
+     &            1.4 * 1.d3 / ( 55.85e+0_fp * VOL )
+!            ELSE
+!               TK=(Spc(I,J,L,id_DST1)*35e-3_fp) *
+!     &            1.4 * 1.d3 / ( 55.85e+0_fp * VOL )
+!            ENDIF
+ 
+            ! Total Mg2+ (0.6% by weight of fine dust) [mole/m3]
+            TMG=Spc(I,J,L,id_DST1) * 0.006e+0_fp * 1.d3 /
+     &          ( 24.312e+0_fp * VOL )
+
 !==============================================================================
 !%%%         ELSE
 !%%%
