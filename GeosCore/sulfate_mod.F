@@ -294,7 +294,7 @@
       INTEGER                :: id_NK8,    id_NK10,   id_NK20  
       INTEGER                :: id_NO3,    id_O3,     id_OH    
       INTEGER                :: id_SALA,   id_SALC,   id_SF1   
-      INTEGER                :: id_SO2,    id_SO4,    id_SO4aq 
+      INTEGER                :: id_SO2,    id_SO4 !,    id_SO4aq SJS
       INTEGER                :: id_SO4d1,  id_SO4d2,  id_SO4d3 
       INTEGER                :: id_SO4d4,  id_SO4s,   id_pFe
       INTEGER                :: id_HOBr,   id_SO4H1,  id_SO4H2
@@ -2691,7 +2691,7 @@
       REAL(fp)              :: AlkA,   AlkC
       REAL(fp)              :: Kt1,    Kt2,     AREASS1, AREASS2
       REAL(fp)              :: PSO4E,  PSO4F,   Kt1N,    Kt2N
-      REAL(fp)              :: XX,     IonStr
+      REAL(fp)              :: XX,     IonStr,  TNVC ! SJS
       REAL(fp)              :: HPLUS,  SO4nss, TNH3,   TNO3,  GNO3, ANIT
       REAL(fp)              :: LSTOT,  ALKdst, ALKss,  ALKds, NH3
       REAL(fp)              :: SSCvv,  aSO4,   SO2_sr, SR,    TANIT
@@ -2818,7 +2818,7 @@
 !$OMP+PRIVATE( RK2, RK, RKT, SO2_cd, L1, Ld, L2, L2S, L3, L3S, FC, LWC )
 !$OMP+PRIVATE( KaqH2O2, KaqO3, ALK, ALK1, ALK2                         )
 !$OMP+PRIVATE( Kt1, Kt2, AREASS1, AREASS2, SO2_ss, Kt1N, Kt2N          )
-!$OMP+PRIVATE( PSO4E, PSO4F, XX, IonStr                                )
+!$OMP+PRIVATE( PSO4E, PSO4F, XX, IonStr, TNVC                          ) !SJS
 !$OMP+PRIVATE( HPLUS, SO4nss, TNH3, TNO3,  GNO3, ANIT,   LSTOT, ALKdst )
 !$OMP+PRIVATE( ALKds, ALKss,  NH3,  SSCvv, aSO4, SO2_sr, SR,    TANIT  )
 !$OMP+PRIVATE( BULK,  SIZE_RES,     RC, AlkA, AlkC                     )
@@ -3173,6 +3173,15 @@
 	    SO4nss  =  Spc(I,J,L,id_SO4) * State_Met%AIRDEN(I,J,L) *
      &                 0.7e+0_fp / ( AIRMW * LWC )
 
+            ! Get total nonvolatile cations and convert to [moles/liter]
+	    ! Use a cloud scavenging ratio of 0.7 
+	    ! A TNVC : DUST molar ratio of 0.08 
+            ! SJS, 20190514
+            TNVC = ( Spc(I,J,L,id_DST1) + Spc(I,J,L,id_DST2) +
+     &               Spc(I,J,L,id_DST3) + Spc(I,J,L,id_DST4) ) *
+     &             State_Met%AIRDEN(I,J,L) * 0.08e+0_fp *
+     &             0.7e+0_fp / ( AIRMW * LWC ) 
+
 	    ! Get total ammonia (NH3 + NH4+) concentration [v/v]
 	    ! Use a cloud scavenging ratio of 0.7 for NH4+
             TNH3     = ( Spc(I,J,L,id_NH4) * 0.7e+0_fp ) + 
@@ -3192,7 +3201,8 @@
 	    ENDIF
 		
             ! Calculate cloud pH
-	    CALL GET_HPLUS( SO4nss, TNH3, TNO3,     SO2_ss, TK, 
+            ! Add TNVC, SJS 20190514
+	    CALL GET_HPLUS( SO4nss, TNVC, TNH3, TNO3,     SO2_ss, TK, 
      &                        PATM,   LWC,  HPLUS_45, HPLUS, IonStr )
 
             ! Store the cloud pH
@@ -5125,7 +5135,8 @@
 !\\
 ! !INTERFACE:
 !
-      SUBROUTINE GET_HPLUS( SO4nss, TNH3, TNO3, SO2,
+! SJS 20190514, add TNVC
+      SUBROUTINE GET_HPLUS( SO4nss, TNVC, TNH3, TNO3, SO2,
      &                      T, PRES, LWC,  iHPLUS, HPLUS, IonStr )
 !
 ! !USES:
@@ -5135,6 +5146,7 @@
 ! !INPUT PARAMETERS: 
 !
       REAL(fp),  INTENT(IN)    :: SO4nss ! Total nss sulfate mixing ratio [M]
+      REAL(fp),  INTENT(IN) :: TNVC!Total nonvolatile cations mixing ratio[M] SJS
       REAL(fp),  INTENT(IN)    :: TNO3   ! Total nitrate (gas+particulate) mixing
                                        ! ratio [v/v]
       REAL(fp),  INTENT(IN)    :: TNH3   ! NH3 mixing ratio [v/v]
@@ -5201,7 +5213,9 @@
 
       ! Non-volatile aerosol concentration [M] 
       ! For now sulfate is the only non-volatile species
-      D = (2.e+0_fp*SO4nss) 
+      ! D = (2.e+0_fp*SO4nss) 
+      ! Add TNVC here, SJS 20190514
+      D = (2.e+0_fp*SO4nss) - TNVC
 
       ! Temperature dependent water equilibrium constant
       Kw_T = Kw*exp(DhrKw*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
@@ -5280,7 +5294,8 @@
 
   	 ! If solution does not converge after 5 iterations
   	 ! average last 2 pH calculations
-  	 IF (count > 5) THEN
+         ! now test iteration of 100 times SJS, 20190514
+  	 IF (count > 100) THEN
 	    newpH = ((-log10(Y)) + (-log10(nHPLUS))) / 2.0e+0_fp
 
             IF (IT_IS_NAN( newpH )) THEN
@@ -5309,7 +5324,7 @@
       ! SJS
       ! Compute ionic strength, estimates
       kNH3p  = kNH3 ( PRES, T, LWC, HPLUS, TNH3, Kw_T )
-      IonStr = HPLUS * ( 1.e+0_fp + kNH3p ) + SO4nss
+      IonStr = HPLUS * ( 1.e+0_fp + kNH3p ) + SO4nss + TNVC
       IF ( IonStr .LT. 0.0e+0_fp ) IonStr = 0.0e+0_fp
 
       END SUBROUTINE GET_HPLUS
@@ -5358,7 +5373,7 @@
       REAL(fp),  PARAMETER  :: Hco2 = 3.4e-2
       REAL(fp),  PARAMETER  :: Dhco2 = 4.85e+0_fp/1.986e-3_fp
       ! CO2 concentration [v/v]
-      REAL(fp),  PARAMETER  :: CO2 = 380.0e-6_fp !380 ppmv
+      REAL(fp),  PARAMETER  :: CO2 = 410.0e-6_fp !410 ppmv, SJS
 !
 ! !LOCAL VARIABLES:
 !
@@ -5429,7 +5444,7 @@
       REAL(fp),  PARAMETER  :: Hco2 = 3.4e-2
       REAL(fp),  PARAMETER  :: Dhco2 = 4.85e+0_fp/1.986e-3_fp
       ! CO2 concentration [v/v]
-      REAL(fp),  PARAMETER  :: CO2 = 380.0e-6_fp 
+      REAL(fp),  PARAMETER  :: CO2 = 410.0e-6_fp !SJS
 !
 ! !LOCAL VARIABLES:
 !
@@ -8372,7 +8387,7 @@
       id_SO4P5 = Ind_('SO4P5'    )
       id_SO4P6 = Ind_('SO4P6'    )
       id_SO4P7 = Ind_('SO4P7'    )
-      id_SO4aq = Ind_('SO4aq'    )
+!      id_SO4aq = Ind_('SO4aq'    ) SJS
       id_SO4d1 = Ind_('SO4D1'    )
       id_SO4d2 = Ind_('SO4D2'    )
       id_SO4d3 = Ind_('SO4D3'    )
