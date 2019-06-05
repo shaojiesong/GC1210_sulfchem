@@ -2691,7 +2691,7 @@
       REAL(fp)              :: AlkA,   AlkC
       REAL(fp)              :: Kt1,    Kt2,     AREASS1, AREASS2
       REAL(fp)              :: PSO4E,  PSO4F,   Kt1N,    Kt2N
-      REAL(fp)              :: XX,     IonStr,  TNVC ! SJS
+      REAL(fp)              :: XX,     IonStr,  TNVC, TNA, TCL ! SJS
       REAL(fp)              :: HPLUS,  SO4nss, TNH3,   TNO3,  GNO3, ANIT
       REAL(fp)              :: LSTOT,  ALKdst, ALKss,  ALKds, NH3
       REAL(fp)              :: SSCvv,  aSO4,   SO2_sr, SR,    TANIT
@@ -2818,7 +2818,7 @@
 !$OMP+PRIVATE( RK2, RK, RKT, SO2_cd, L1, Ld, L2, L2S, L3, L3S, FC, LWC )
 !$OMP+PRIVATE( KaqH2O2, KaqO3, ALK, ALK1, ALK2                         )
 !$OMP+PRIVATE( Kt1, Kt2, AREASS1, AREASS2, SO2_ss, Kt1N, Kt2N          )
-!$OMP+PRIVATE( PSO4E, PSO4F, XX, IonStr, TNVC                          ) !SJS
+!$OMP+PRIVATE( PSO4E, PSO4F, XX, IonStr, TNVC, TNA, TCL                ) !SJS
 !$OMP+PRIVATE( HPLUS, SO4nss, TNH3, TNO3,  GNO3, ANIT,   LSTOT, ALKdst )
 !$OMP+PRIVATE( ALKds, ALKss,  NH3,  SSCvv, aSO4, SO2_sr, SR,    TANIT  )
 !$OMP+PRIVATE( BULK,  SIZE_RES,     RC, AlkA, AlkC                     )
@@ -3165,45 +3165,64 @@
             ! in aqueous phase with different rate constants. 
             !===========================================================
 
-	    ! Get concentrations for cloud pH calculation (bec, 12/23/11)
+            ! Get concentrations for cloud pH calculation (bec, 12/23/11)
 
-	    ! Get sulfate concentration and convert from [v/v] to
+            ! Get sulfate concentration and convert from [v/v] to
             ! [moles/liter]
-	    ! Use a cloud scavenging ratio of 0.7 
-	    SO4nss  =  Spc(I,J,L,id_SO4) * State_Met%AIRDEN(I,J,L) *
+            ! Use a cloud scavenging ratio of 0.7 
+            SO4nss  =  Spc(I,J,L,id_SO4) * State_Met%AIRDEN(I,J,L) *
      &                 0.7e+0_fp / ( AIRMW * LWC )
 
             ! Get total nonvolatile cations and convert to [moles/liter]
-	    ! Use a cloud scavenging ratio of 0.7 
-	    ! A TNVC : DUST molar ratio of 0.08 
+            ! Use a cloud scavenging ratio of 0.7 
+            ! A TNVC : DUST molar ratio of 0.08 
             ! SJS, 20190514
             TNVC = ( Spc(I,J,L,id_DST1) + Spc(I,J,L,id_DST2) +
      &               Spc(I,J,L,id_DST3) + Spc(I,J,L,id_DST4) ) *
      &             State_Met%AIRDEN(I,J,L) * 0.08e+0_fp *
      &             0.7e+0_fp / ( AIRMW * LWC ) 
 
-	    ! Get total ammonia (NH3 + NH4+) concentration [v/v]
-	    ! Use a cloud scavenging ratio of 0.7 for NH4+
+            ! SJS, 20190604
+            ! Now only include fine and coarse sea salt
+            ! Get total chlorine concentration [v/v]
+            TCL =  ( Spc(I,J,L,id_SALA) + Spc(I,J,L,id_SALC) ) *
+     &             0.7e+0_fp * 
+     &             ( 31.4e+0_fp * 0.5504e+0_fp / 35.45e+0_fp )
+
+            ! Get total sodium concentration [moles/liter]
+            TNA =  ( Spc(I,J,L,id_SALA) + Spc(I,J,L,id_SALC) ) *
+     &             0.7e+0_fp * 
+     &             ( 31.4e+0_fp * 0.3061e+0_fp / 22.99e+0_fp ) *
+     &             State_Met%AIRDEN(I,J,L) / ( AIRMW * LWC ) 
+
+            ! Get total ammonia (NH3 + NH4+) concentration [v/v]
+            ! Use a cloud scavenging ratio of 0.7 for NH4+
             TNH3     = ( Spc(I,J,L,id_NH4) * 0.7e+0_fp ) + 
      &                   Spc(I,J,L,id_NH3)
 
-	    ! Get total nitrate (HNO3 + NIT) concentrations [v/v] 
-     	    ! Use a cloud scavenging ratio of 0.7 for NIT
-	    IF ( IS_FULLCHEM ) THEN
+            ! Get total nitrate (HNO3 + NIT) concentrations [v/v] 
+            ! Use a cloud scavenging ratio of 0.7 for NIT
+            IF ( IS_FULLCHEM ) THEN
                TNO3 = Spc(I,J,L,id_HNO3) + 
      &              ( Spc(I,J,L,id_NIT) * 0.7e+0_fp )
-	       GNO3 = Spc(I,J,L,id_HNO3) !For Fahey & Pandis decision algorithm
+               GNO3 = Spc(I,J,L,id_HNO3) !For Fahey & Pandis decision algorithm
             ELSE IF ( IS_OFFLINE ) THEN
                TANIT = Spc(I,J,L,id_NIT) !aerosol nitrate [v/v]
-	       GNO3  = HNO3(I,J,L) - TANIT ! gas-phase nitric acid [v/v]
-   	       ANIT  = TANIT * 0.7e+0_fp ! aerosol nitrate in the cloud drops [v/v]
-	       TNO3  = GNO3 + ANIT   ! total nitrate for cloud pH calculations
-	    ENDIF
-		
-            ! Calculate cloud pH
-            ! Add TNVC, SJS 20190514
-	    CALL GET_HPLUS( SO4nss, TNVC, TNH3, TNO3,     SO2_ss, TK, 
-     &                        PATM,   LWC,  HPLUS_45, HPLUS, IonStr )
+               GNO3  = HNO3(I,J,L) - TANIT ! gas-phase nitric acid [v/v]
+               ANIT  = TANIT * 0.7e+0_fp ! aerosol nitrate in the cloud drops [v/v]
+               TNO3  = GNO3 + ANIT   ! total nitrate for cloud pH calculations
+            ENDIF
+
+        ! Calculate cloud pH
+        ! Add TNVC, SJS 20190514
+        ! Add TNA and TCL from fine and coarse sea salt, SJS 20190604
+        IF ( -1 > 0 ) THEN
+           CALL GET_HPLUS( SO4nss, TNVC, TNH3, TNO3, SO2_ss, 
+     &          TCL, TNA, TK, PATM, LWC, HPLUS_45, HPLUS, IonStr )
+        ELSE
+           CALL GET_HPLUS_NEW( SO4nss, TNVC, TNH3, TNO3, SO2_ss, 
+     &          TCL, TNA, TK, PATM, LWC, HPLUS_45, HPLUS, IonStr )
+        ENDIF
 
             ! Store the cloud pH
             pHCloud(I,J,L) = -1.0e+0_fp * log10(HPLUS)
@@ -5136,7 +5155,8 @@
 ! !INTERFACE:
 !
 ! SJS 20190514, add TNVC
-      SUBROUTINE GET_HPLUS( SO4nss, TNVC, TNH3, TNO3, SO2,
+! SJS 20190604, add CL, NA
+      SUBROUTINE GET_HPLUS( SO4nss, TNVC, TNH3, TNO3, SO2, CL, NA,
      &                      T, PRES, LWC,  iHPLUS, HPLUS, IonStr )
 !
 ! !USES:
@@ -5147,6 +5167,8 @@
 !
       REAL(fp),  INTENT(IN)    :: SO4nss ! Total nss sulfate mixing ratio [M]
       REAL(fp),  INTENT(IN) :: TNVC!Total nonvolatile cations mixing ratio[M] SJS
+      REAL(fp),  INTENT(IN)    :: CL ! HCl mixing ratio [v/v] SJS
+      REAL(fp),  INTENT(IN)    :: NA ! Na mixing ratio [M] SJS
       REAL(fp),  INTENT(IN)    :: TNO3   ! Total nitrate (gas+particulate) mixing
                                        ! ratio [v/v]
       REAL(fp),  INTENT(IN)    :: TNH3   ! NH3 mixing ratio [v/v]
@@ -5215,7 +5237,8 @@
       ! For now sulfate is the only non-volatile species
       ! D = (2.e+0_fp*SO4nss) 
       ! Add TNVC here, SJS 20190514
-      D = (2.e+0_fp*SO4nss) - TNVC
+      ! Add NA here, SJS 20190604
+      D = (2.e+0_fp*SO4nss) - TNVC - NA
 
       ! Temperature dependent water equilibrium constant
       Kw_T = Kw*exp(DhrKw*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
@@ -5230,73 +5253,73 @@
  
          IF ( COUNT .EQ. 1 ) THEN
             ipH = ipH
-	 ELSE
+         ELSE
             ipH = newpH
-	 ENDIF
+         ENDIF
 
          nHPLUS = 10.e+0_fp**(-ipH)
 
          kCO2p  = kCO21 ( PRES, T, LWC, nHPLUS ) 
 
-	 kCO2p2 = kCO22 ( PRES, T, LWC, nHPLUS ) 
+         kCO2p2 = kCO22 ( PRES, T, LWC, nHPLUS ) 
 
-	 kSO2p  = kSO21 ( PRES, T, LWC, nHPLUS, SO2 )
+         kSO2p  = kSO21 ( PRES, T, LWC, nHPLUS, SO2 )
 
-	 kSO2p2 = kSO22 ( PRES, T, LWC, nHPLUS, SO2 )
+         kSO2p2 = kSO22 ( PRES, T, LWC, nHPLUS, SO2 )
 
-	 kHNO3p = kHNO3 ( PRES, T, LWC, nHPLUS, TNO3 )
+         kHNO3p = kHNO3 ( PRES, T, LWC, nHPLUS, TNO3 )
 
-	 kNH3p  = kNH3  ( PRES, T, LWC, nHPLUS, TNH3, Kw_T )
+         kNH3p  = kNH3  ( PRES, T, LWC, nHPLUS, TNH3, Kw_T )
 
          ! Save this for later in case we want to include HCl in cloud pH
          ! calculations
-         !kHClp  = kHCl  ( PRES, T, LWC, nHPLUS, CL  ) 
+         kHClp  = kHCl  ( PRES, T, LWC, nHPLUS, CL  ) 
 
-         !E = KHClp + Kw_T + KCO2p + KSO2p + KHNO3p !This would be used if HCl is included
-	 E = Kw_T + KCO2p + KSO2p + KHNO3p 
+         E = KHClp + Kw_T + KCO2p + KSO2p + KHNO3p !This would be used if HCl is included
+         !E = Kw_T + KCO2p + KSO2p + KHNO3p 
 
-	 F = KCO2p2 + KSO2p2
+         F = KCO2p2 + KSO2p2
 
-	 G = KNH3p
+         G = KNH3p
 
-	 H = 1 + G
+         H = 1 + G
 
-	 P = -(D/H)
+         P = -(D/H)
 
-	 Q = -E/H
+         Q = -E/H
 
-	 R = F/H
+         R = -F/H !SJS 20190528
 
-	 A = (1.e+0_f8/3.e+0_f8)*((3.e+0_f8*Q)-(P*P))
+         A = (1.e+0_f8/3.e+0_f8)*((3.e+0_f8*Q)-(P*P))
 
-  	 B = (1.e+0_f8/27.e+0_f8)*((2.0e+0_f8*P*P*P)
+         B = (1.e+0_f8/27.e+0_f8)*((2.0e+0_f8*P*P*P)
      &        -(9.0e+0_f8*P*Q)+(27.0e+0_f8*R))
 
- 	 A2 = 0.
- 	 A1 = A
- 	 A0 = B
+         A2 = 0.
+         A1 = A
+         A0 = B
 
-	 !write(6,*) 'calling CUBIC'
+         !write(6,*) 'calling CUBIC'
          CALL CUBIC ( A2, A1, A0, NR, CRUTES )
-	 !write(6,*) 'after CUBIC'
+         !write(6,*) 'after CUBIC'
 
          ! Code assumes the smallest positive root is in CRUTES(1)
          X = CRUTES( 1 )
 
-	 ! Y = [H+]
- 	 Y = X - (P/3.0e+0_fp)
+         ! Y = [H+]
+         Y = X - (P/3.0e+0_fp)
 
-  	 ! Set minimum [H+] = 1.d-14 (pH = 14)
-    	 Y = MAX(Y,1.0e-14_fp)
+         ! Set minimum [H+] = 1.d-14 (pH = 14)
+         Y = MAX(Y,1.0e-14_fp)
 
-  	 ! Set maximum [H+] = 1.d-1 (pH = 1)
-    	 Y = MIN(Y,1.0e-1_fp)
+         ! Set maximum [H+] = 1.d-1 (pH = 1)
+         Y = MIN(Y,1.0e-1_fp)
 
-  	 ! If solution does not converge after 5 iterations
-  	 ! average last 2 pH calculations
+         ! If solution does not converge after 5 iterations
+         ! average last 2 pH calculations
          ! now test iteration of 100 times SJS, 20190514
-  	 IF (count > 100) THEN
-	    newpH = ((-log10(Y)) + (-log10(nHPLUS))) / 2.0e+0_fp
+         IF (count > 100) THEN
+            newpH = ((-log10(Y)) + (-log10(nHPLUS))) / 2.0e+0_fp
 
             IF (IT_IS_NAN( newpH )) THEN
                write(6,*) 'newpH = ', newpH
@@ -5324,10 +5347,198 @@
       ! SJS
       ! Compute ionic strength, estimates
       kNH3p  = kNH3 ( PRES, T, LWC, HPLUS, TNH3, Kw_T )
-      IonStr = HPLUS * ( 1.e+0_fp + kNH3p ) + SO4nss + TNVC
+      IonStr = HPLUS * ( 1.e+0_fp + kNH3p ) + SO4nss + TNVC + NA
       IF ( IonStr .LT. 0.0e+0_fp ) IonStr = 0.0e+0_fp
 
       END SUBROUTINE GET_HPLUS
+!EOC
+!------------------------------------------------------------------------------
+!                  GEOS-Chem Global Chemical Transport Model                  !
+!------------------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: get_hplus_new
+!
+! !DESCRIPTION: Subroutine GET\_HPLUS\_NEW computes H+ concentrations in cloud
+!  liquid water for pH dependent cloud chemistry. (bec, 4/11/11)
+! ! Now use Newton's method (SJS, 20190528)
+!\\
+!\\
+! !INTERFACE:
+!
+! SJS 20190514, add TNVC
+! SJS 20190604, add CL, NA
+      SUBROUTINE GET_HPLUS_NEW( SO4nss, TNVC, TNH3, TNO3, SO2,
+     &           CL, NA, T, PRES, LWC,  iHPLUS, HPLUS, IonStr )
+!
+! !USES:
+!
+      USE ERROR_MOD,       ONLY : IT_IS_NAN, GEOS_CHEM_STOP
+!
+! !INPUT PARAMETERS: 
+!
+      REAL(fp),  INTENT(IN)    :: SO4nss ! Total nss sulfate mixing ratio [M]
+      REAL(fp),  INTENT(IN) :: TNVC!Total nonvolatile cations mixing ratio[M] SJS
+      REAL(fp),  INTENT(IN)    :: CL ! HCl mixing ratio [v/v] SJS
+      REAL(fp),  INTENT(IN)    :: NA ! Na mixing ratio [M] SJS
+      REAL(fp),  INTENT(IN)    :: TNO3   ! Total nitrate (gas+particulate) mixing
+                                       ! ratio [v/v]
+      REAL(fp),  INTENT(IN)    :: TNH3   ! NH3 mixing ratio [v/v]
+      REAL(fp),  INTENT(IN)    :: SO2    ! SO2 mixing ratio [v/v] 
+      REAL(fp),  INTENT(IN)    :: T      ! Temperature [K]
+      REAL(fp),  INTENT(IN)    :: PRES   ! Dry air partial ressure [atm]
+      REAL(fp),  INTENT(IN)    :: LWC    ! Cloud liquid water content [m3/m3]
+      REAL(fp),  INTENT(IN)    :: iHPLUS ! Initial [H+] [M]
+!
+! !OUTPUT PARAMETERS: 
+!
+      REAL(fp),  INTENT(OUT)   :: HPLUS  ! Calculated [H+] [M]
+      REAL(fp),  INTENT(OUT)   :: IonStr ! Calculated Ionic Strength [M]
+! !REMARKS:
+!  Calculation:
+!  ============================================================================
+!  Solve the following electroneutrality equation:
+!  [H+] = 2[SO4]nss + [Cl] + [OH] + [HCO3] + 2[CO3] + [HSO3] + 2[SO3] + [NO3]
+!        - [Na] - 2[Ca] - [K] - 2[Mg] - [NH4]
+!
+!  Aqueous concentrations of [Cl], [Na], [Ca], [K], and [Mg] come from 
+!  ISORROPIA II
+!
+!  Let concentrations of [HCO3], [CO3], [HSO3], [SO3], [NO3] and [NH4] evolve
+!  according to Henry's law equilibrium.
+!
+!  Assume [S(VI)] = [SO4]nss (this applies for pH > 3)
+!            
+! !REVISION HISTORY:
+!  25 Jan 2012 - M. Payer    - Added ProTeX headers
+!  06 Jan 2015 - M. Yannetti - Set some variables to f8 that required it
+!  28 Apr 2015 - E. Lundgren - Input pressure is now dry air partial pressure
+!EOP
+!------------------------------------------------------------------------------
+!BOC
+!
+! !DEFINED PARAMETERS:
+!
+
+      ! Water dissociation constants
+      REAL(fp),  PARAMETER   :: Kw   = 1.0e-14_fp
+      REAL(fp),  PARAMETER   :: DhrKw = -6710.e+0_fp
+      REAL(fp),  PARAMETER   :: MINVAL = 0.01
+!
+! !LOCAL VARIABLES:
+!
+      REAL(fp)               :: D, Kw_T, ipH, newpH, nHPLUS
+      REAL(fp)               :: kCO2p, kCO2p2, dCO3p
+      REAL(fp)               :: kSO2p, kSO2p2, dSO3p, dCLp
+      REAL(fp)               :: kHNO3p, kNH3p, kHClp, dNO3p, dNH4p
+      REAL(fp)               :: fnHPLUS, dnHPLUS
+      INTEGER                :: count
+      REAL(fp)               :: E, F, G, H, Y
+
+      !=================================================================
+      ! GET_HPLUS_NEW begins here!
+      !=================================================================
+
+      ! Initial pH guess 
+      ipH = -log10(iHPLUS)
+
+      ! Non-volatile aerosol concentration [M] 
+      ! For now sulfate is the only non-volatile species
+      ! D = (2.e+0_fp*SO4nss) 
+      ! Add TNVC here, SJS 20190514
+      ! Add NA here, SJS 20190604
+      D = (2.e+0_fp*SO4nss) - TNVC - NA
+
+      ! Temperature dependent water equilibrium constant
+      Kw_T = Kw*exp(DhrKw*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+
+      ! Initialize
+      newpH   = 0.0 
+      COUNT = 0
+
+      DO WHILE ( ABS(ipH-newpH) .gt. MINVAL )
+
+        COUNT = COUNT+1
+
+        IF ( COUNT .EQ. 1 ) THEN
+           ipH = ipH
+        ELSE
+           ipH = newpH
+        ENDIF
+
+        nHPLUS = 10.e+0_fp**(-ipH)
+
+        kCO2p  = kCO21 ( PRES, T, LWC, nHPLUS ) 
+        kCO2p2 = kCO22 ( PRES, T, LWC, nHPLUS ) 
+        kSO2p  = kSO21 ( PRES, T, LWC, nHPLUS, SO2 )
+        kSO2p2 = kSO22 ( PRES, T, LWC, nHPLUS, SO2 )
+        kHNO3p = kHNO3 ( PRES, T, LWC, nHPLUS, TNO3 )
+        kNH3p  = kNH3  ( PRES, T, LWC, nHPLUS, TNH3, Kw_T )
+        kHClp  = kHCl  ( PRES, T, LWC, nHPLUS, CL  ) 
+
+        E = KHClp + Kw_T + KCO2p + KSO2p + KHNO3p !This would be used if HCl is included
+        !E =        Kw_T + KCO2p + KSO2p + KHNO3p 
+        F = KCO2p2 + KSO2p2
+        G = KNH3p
+        H = 1 + G
+
+        ! f(nHPLUS) = [H+] + [NH4+] - [OH-] - [HCO3-] - 2[CO32-] - [HSO3-] -
+        !             2[SO32-] - [NO3-] - 2[SO4] + TNVC
+        fnHPLUS = H*nHPLUS - D - E/nHPLUS - F/nHPLUS/nHPLUS
+
+        dNH4p = dNH4 ( PRES, T, LWC, nHPLUS, TNH3, Kw_T )
+        dNO3p = dNO3 ( PRES, T, LWC, nHPLUS, TNO3 )
+        dCLp =   dCL ( PRES, T, LWC, nHPLUS, CL )
+        dCO3p = dCO3 ( PRES, T, LWC, nHPLUS )
+        dSO3p = dSO3 ( PRES, T, LWC, nHPLUS, SO2 )
+
+        dnHPLUS = 1.e+0_fp + dNH4p + Kw_T/nHPLUS/nHPLUS - dCO3p -
+     &            dSO3p - dNO3p - dCLp
+
+        Y = nHPLUS - fnHPLUS / dnHPLUS
+
+        ! Set minimum [H+] = 1.d-14 (pH = 14)
+        Y = MAX(Y,1.0e-14_fp)
+
+        ! Set maximum [H+] = 1.d-1 (pH = 1)
+        Y = MIN(Y,1.0e-1_fp)
+
+        ! If solution does not converge after 5 iterations
+        ! average last 2 pH calculations
+        ! now test iteration of 100 times SJS, 20190514
+        IF (count > 100) THEN
+           newpH = ((-log10(Y)) + (-log10(nHPLUS))) / 2.0e+0_fp
+
+           IF (IT_IS_NAN( newpH )) THEN
+              write(6,*) 'newpH = ', newpH
+              write(6,*) 'Y = ', Y
+              write(6,*) 'nHPLUS = ', nHPLUS
+              CALL GEOS_CHEM_STOP
+           ENDIF
+
+           EXIT
+        ELSE
+            newpH = -log10(Y)
+
+            IF (IT_IS_NAN( newpH )) THEN
+               write(6,*) 'newpH = ', newpH
+               write(6,*) 'Y = ', Y
+               CALL GEOS_CHEM_STOP
+            ENDIF
+
+        ENDIF
+
+        ENDDO
+
+      HPLUS = 10.0e+0_fp**(-newpH)
+
+      ! SJS 20190528
+      ! Compute ionic strength, estimates
+      kNH3p  = kNH3 ( PRES, T, LWC, HPLUS, TNH3, Kw_T )
+      IonStr = HPLUS * ( 1.e+0_fp + kNH3p ) + SO4nss + TNVC + NA
+      IF ( IonStr .LT. 0.0e+0_fp ) IonStr = 0.0e+0_fp
+
+      END SUBROUTINE GET_HPLUS_NEW
 !EOC
 !------------------------------------------------------------------------------
 !                  GEOS-Chem Global Chemical Transport Model                  !
@@ -5349,7 +5560,7 @@
 !
 ! !OUTPUT PARAMETERS: 
 !
-      REAL(fp)              :: KCO2p, KCO2p2
+      REAL(fp)              :: KCO2p !, KCO2p2, SJS 20190528
 !
 ! !REVISION HISTORY:
 !  25 Jan 2012 - M. Payer    - Added ProTeX headers
@@ -5477,6 +5688,90 @@
 !------------------------------------------------------------------------------
 !BOP
 !
+! !IROUTINE: dCO3
+!
+! !DESCRIPTION: Function dCO3
+!\\
+!\\
+! !INTERFACE:
+!
+      FUNCTION dCO3 ( P, T, LWC, HPLUS ) RESULT ( dCO3p )
+!
+! !INPUT PARAMETERS: 
+!
+      REAL(fp),  INTENT(IN) :: T, P, LWC, HPLUS
+!
+! !OUTPUT PARAMETERS: 
+!
+      REAL(fp)              :: dCO3p !SJS 20190528
+!
+! !REVISION HISTORY:
+!  25 Jan 2012 - M. Payer    - Added ProTeX headers
+!  28 Apr 2015 - E. Lundgren - Input pressure is now dry air partial pressure
+!  22 Mar 2017 - M. Sulprizio- Dhco2 value is from Table 7.3 of Seinfeld and
+!                              Pandis (2006, pp 289) and should be positive for
+!                              consistency with the way it is used here. Also,
+!                              the value of R, in units of kcal mol-1 K-1, is
+!                              1.986x10^-3, not 0.04. (V. Shah)
+!EOP
+!------------------------------------------------------------------------------
+!BOC
+!
+! !DEFINED PARAMETERS:
+!
+      ! CO2 dissociation constants
+      REAL(fp),  PARAMETER  :: Kc1 = 4.3e-7
+      REAL(fp),  PARAMETER  :: Kc2 =4.68e-11
+      REAL(fp),  PARAMETER  :: DhrKc1 = -1000.
+      REAL(fp),  PARAMETER  :: DhrKc2 = -1760.
+      REAL(fp),  PARAMETER  :: Hco2 = 3.4e-2
+      REAL(fp),  PARAMETER  :: Dhco2 = 4.85e+0_fp/1.986e-3_fp
+      ! CO2 concentration [v/v]
+      REAL(fp),  PARAMETER  :: CO2 = 410.0e-6_fp !410 ppmv, SJS
+!
+! !LOCAL VARIABLES:
+!
+      REAL(fp)              :: Hco2_T, Kc1_T, Kc2_T
+      REAL(fp)              :: Hco2eff, xCO2, pCO2
+      REAL(fp)              :: C1, C2, C3, C4
+      REAL(fp)              :: dCO3p1, dCO3p2
+
+      !=================================================================
+      ! dCO3 begins here!
+      !=================================================================
+
+      !CO2 dissolution constants
+      Hco2_T = Hco2*exp(Dhco2*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+      Kc1_T = Kc1*exp(DhrKc1*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+      Kc2_T = Kc2*exp(DhrKc1*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+
+      !CO2 dissolution  
+      Hco2eff = Hco2_T*(1.e+0_fp+(Kc1_T/HPLUS)+((Kc1_T*Kc2_T)/
+     &         (HPLUS*HPLUS)))
+      xCO2 = 1.e+0_fp / ( 1.e+0_fp 
+     &     + ( Hco2eff * 0.08205e+0_fp * T * LWC ) )
+      pCO2 = CO2 * P * xCO2
+
+      C1 = Hco2_T * Kc1_T * CO2 * P
+      C2 = Hco2_T * 0.08205e+0_fp * T * LWC
+      C3 = Kc1_T * Kc2_T * C2
+      C4 = Hco2_T * Kc1_T * pCO2
+
+      dCO3p1 = C1 * (C3/HPLUS/HPLUS-1.e+0_fp-C2) * 
+     &         ( ( (1.e+0_fp+C2)*HPLUS + 
+     &         Kc1_T*C2 + C3/HPLUS )**(-2.e+0_fp) )
+
+      dCO3p2 = Kc2_T * ( dCO3p1/HPLUS - C4*( HPLUS**(-3.e+0_fp) ) )
+
+      dCO3p = dCO3p1 + 2.e+0_fp * dCO3p2
+
+      END FUNCTION dCO3
+!EOC
+!------------------------------------------------------------------------------
+!                  GEOS-Chem Global Chemical Transport Model                  !
+!------------------------------------------------------------------------------
+!BOP
+!
 ! !IROUTINE: kSO21
 !
 ! !DESCRIPTION: Function kSO21
@@ -5492,7 +5787,7 @@
 !
 ! !OUTPUT PARAMETERS: 
 !
-      REAL(fp)              :: KSO2p, KSO2p2
+      REAL(fp)              :: KSO2p !, KSO2p2 SJS 20190529
 !
 ! !REVISION HISTORY:
 !  25 Jan 2012 - M. Payer    - Added ProTeX headers
@@ -5524,7 +5819,6 @@
       !=================================================================
       ! kSO21 begins here!
       !=================================================================
-
 
       ! SO2 dissolution constants
       Hso2_T = Hso2*exp(Dhso2*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
@@ -5595,7 +5889,6 @@
       ! kSO22 begins here!
       !=================================================================
 
-
       ! SO2 dissolution constants
       Hso2_T = Hso2*exp(Dhso2*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
       Ks1_T  = Ks1 *exp(DhrKso21*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
@@ -5618,9 +5911,91 @@
 !------------------------------------------------------------------------------
 !BOP
 !
+! !IROUTINE: dSO3
+!
+! !DESCRIPTION: Function dSO3
+!\\
+!\\
+! !INTERFACE:
+!
+      FUNCTION dSO3 ( P, T, LWC, HPLUS, SO2 ) RESULT ( dSO3p )
+!
+! !INPUT PARAMETERS: 
+!
+      REAL(fp),  INTENT(IN) :: T, P, LWC, HPLUS, SO2
+!
+! !OUTPUT PARAMETERS: 
+!
+      REAL(fp)              :: dSO3p !SJS 20190528
+!
+! !REVISION HISTORY:
+!  25 Jan 2012 - M. Payer    - Added ProTeX headers
+!  28 Apr 2015 - E. Lundgren - Input pressure is now dry air partial pressure
+!  22 Mar 2017 - M. Sulprizio- Dhco2 value is from Table 7.3 of Seinfeld and
+!                              Pandis (2006, pp 289) and should be positive for
+!                              consistency with the way it is used here. Also,
+!                              the value of R, in units of kcal mol-1 K-1, is
+!                              1.986x10^-3, not 0.04. (V. Shah)
+!EOP
+!------------------------------------------------------------------------------
+!BOC
+!
+! !DEFINED PARAMETERS:
+!
+      ! SO2 dissociation constants
+      REAL(fp),  PARAMETER  :: Ks1 = 1.3e-2
+      REAL(fp),  PARAMETER  :: Ks2 = 6.6e-8
+      REAL(fp),  PARAMETER  :: Hso2 = 1.23
+      REAL(fp),  PARAMETER  :: Dhso2 = 6.25e+0_fp/1.986e-3_fp
+      REAL(fp),  PARAMETER  :: DhrKso21 = 1960.
+      REAL(fp),  PARAMETER  :: DhrKso22 = 1500.
+!
+! !LOCAL VARIABLES:
+!
+      REAL(fp)              :: Hso2_T, Ks1_T, Ks2_T
+      REAL(fp)              :: Hso2eff, xSO2, pSO2
+      REAL(fp)              :: C1, C2, C3, C4
+      REAL(fp)              :: dSO3p1, dSO3p2
+
+      !=================================================================
+      ! dSO3 begins here!
+      !=================================================================
+
+      ! SO2 dissolution constants
+      Hso2_T = Hso2*exp(Dhso2*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+      Ks1_T  = Ks1 *exp(DhrKso21*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+      Ks2_T  = Ks2 *exp(DhrKso22*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+
+      !SO2 dissolution
+      Hso2eff = Hso2_T*(1.e+0_fp+(Ks1_T/HPLUS)+((Ks1_T*Ks2_T)/
+     &         (HPLUS*HPLUS)))
+      xSO2 = 1.e+0_fp / ( 1.e+0_fp 
+     &     + ( Hso2eff * 0.08205e+0_fp * T * LWC ) )
+      pSO2 = SO2 * P * xSO2
+
+      C1 = Hso2_T * Ks1_T * SO2 * P
+      C2 = Hso2_T * 0.08205e+0_fp * T * LWC
+      C3 = Ks1_T * Ks2_T * C2
+      C4 = Hso2_T * Ks1_T * pSO2
+
+      dSO3p1 = C1 * (C3/HPLUS/HPLUS-1.e+0_fp-C2) * 
+     &         (( (1.e+0_fp+C2)*HPLUS + 
+     &         Ks1_T*C2 + C3/HPLUS )**(-2.e+0_fp))
+
+      dSO3p2 = Ks2_T * ( dSO3p1/HPLUS - C4*( HPLUS**(-3.e+0_fp) ) )
+
+      dSO3p = dSO3p1 + 2.e+0_fp * dSO3p2
+
+      END FUNCTION dSO3
+!EOC
+!------------------------------------------------------------------------------
+!                  GEOS-Chem Global Chemical Transport Model                  !
+!------------------------------------------------------------------------------
+!BOP
+!
 ! !IROUTINE: kHNO3
 !
-! !DESCRIPTION: Function kNO3
+! !DESCRIPTION: Function kHNO3
 !\\
 !\\
 ! !INTERFACE:
@@ -5683,6 +6058,66 @@
 !------------------------------------------------------------------------------
 !BOP
 !
+! !IROUTINE: dNO3
+!
+! !DESCRIPTION: Function dNO3
+!\\
+!\\
+! !INTERFACE:
+!
+      FUNCTION dNO3 ( P, T, LWC, HPLUS, HNO3 ) RESULT ( dNO3p )
+!
+! !INPUT PARAMETERS: 
+!
+      REAL(fp),  INTENT(IN) :: T, P, LWC, HPLUS, HNO3
+!
+! !OUTPUT PARAMETERS: 
+!
+      REAL(fp)              :: dNO3p !SJS 20190528
+!
+! !REVISION HISTORY:
+!  25 Jan 2012 - M. Payer    - Added ProTeX headers
+!  28 Apr 2015 - E. Lundgren - Input pressure is now dry air partial pressure
+!  22 Mar 2017 - M. Sulprizio- Add fix for Hhno3eff from V. Shah
+!EOP
+!------------------------------------------------------------------------------
+!BOC
+!
+! !DEFINED PARAMETERS:
+!
+      ! HNO3 dissociation constants
+      REAL(fp),  PARAMETER  :: Kn1 = 15.4
+      REAL(fp),  PARAMETER  :: Hhno3 = 2.1e5
+      REAL(fp),  PARAMETER  :: Dhhno3 = 0.
+      REAL(fp),  PARAMETER  :: DhrKn1 = 8700.
+!
+! !LOCAL VARIABLES:
+!
+      REAL(fp)              :: Hhno3_T, Kn1_T
+      REAL(fp)              :: C1, C2
+
+      !=================================================================
+      ! dNO3 begins here!
+      !=================================================================
+
+      ! HNO3 dissolution constants
+      Hhno3_T = Hhno3*exp(Dhhno3*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+      Kn1_T = Kn1*exp(DhrKn1*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+
+      ! HNO3 dissolution
+      C1 = Hhno3_T * Kn1_T * HNO3 * P
+      C2 = Hhno3_T * 0.08205e+0_fp * T * LWC
+
+      dNO3p = -1.e+0_fp * C1 * (1.e+0_fp+C2) * 
+     &         (( (1.e+0_fp+C2)*HPLUS + Kn1_T*C2 )**(-2.e+0_fp))
+
+      END FUNCTION dNO3
+!EOC
+!------------------------------------------------------------------------------
+!                  GEOS-Chem Global Chemical Transport Model                  !
+!------------------------------------------------------------------------------
+!BOP
+!
 ! !IROUTINE: kHCl
 !
 ! !DESCRIPTION: Function kHCl
@@ -5714,7 +6149,7 @@
 !
 ! !DEFINED PARAMETERS:
 !
-      ! HNO3 dissociation constants
+      ! HCl dissociation constants
       REAL(fp),  PARAMETER  :: Kcl = 1.74e+6_fp
       REAL(fp),  PARAMETER  :: Hcl = 1.1e+0_fp
       REAL(fp),  PARAMETER  :: Dhcl = 4.0e+0_fp/1.986e-3_fp
@@ -5729,7 +6164,7 @@
       ! kHCl begins here!
       !=================================================================
 
-      ! HNO3 dissolution constants
+      ! HCl dissolution constants
       HCl_T = Hcl*exp(Dhcl*((1.0e+0_fp/T)-(1.0e+0_fp/298.0e+0_fp)))
       Kcl_T = Kcl*exp(DhrKcl*((1.0e+0_fp/T)-(1.0e+0_fp/298.0e+0_fp)))
 
@@ -5742,6 +6177,65 @@
       kHClp = Hcl_T * Kcl_T * pHCl
 
       END FUNCTION kHCl
+!EOC
+!------------------------------------------------------------------------------
+!                  GEOS-Chem Global Chemical Transport Model                  !
+!------------------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: dCL
+!
+! !DESCRIPTION: Function dCL
+!\\
+!\\
+! !INTERFACE:
+!
+      FUNCTION dCL ( P, T, LWC, HPLUS, Cl ) RESULT ( dCLp )
+!
+! !INPUT PARAMETERS: 
+!
+      REAL(fp),  INTENT(IN) :: T, P, LWC, HPLUS, Cl
+!
+! !OUTPUT PARAMETERS: 
+!
+      REAL(fp)              :: dCLp !SJS 20190604
+!
+! !REVISION HISTORY:
+!  25 Jan 2012 - M. Payer    - Added ProTeX headers
+!  28 Apr 2015 - E. Lundgren - Input pressure is now dry air partial pressure
+!EOP
+!------------------------------------------------------------------------------
+!BOC
+!
+! !DEFINED PARAMETERS:
+!
+      ! HCl dissociation constants
+      REAL(fp),  PARAMETER  :: Kcl = 1.74e+6_fp
+      REAL(fp),  PARAMETER  :: Hcl = 1.1e+0_fp
+      REAL(fp),  PARAMETER  :: Dhcl = 4.0e+0_fp/1.986e-3_fp
+      REAL(fp),  PARAMETER  :: DhrKcl = 6900.e+0_fp
+!
+! !LOCAL VARIABLES:
+!
+      REAL(fp)              :: Hcl_T, Kcl_T
+      REAL(fp)              :: C1, C2
+
+      !=================================================================
+      ! dCL begins here!
+      !=================================================================
+
+      ! HCl dissolution constants
+      HCl_T = Hcl*exp(Dhcl*((1.0e+0_fp/T)-(1.0e+0_fp/298.0e+0_fp)))
+      Kcl_T = Kcl*exp(DhrKcl*((1.0e+0_fp/T)-(1.0e+0_fp/298.0e+0_fp)))
+
+      ! HCl dissolution
+      C1 = HCl_T * Kcl_T * Cl * P
+      C2 = HCl_T * 0.08205e+0_fp * T * LWC
+
+      dCLp = -1.e+0_fp * C1 * (1.e+0_fp+C2) * 
+     &         (( (1.e+0_fp+C2)*HPLUS + Kcl_T*C2 )**(-2.e+0_fp))
+
+      END FUNCTION dCL
 !EOC
 !------------------------------------------------------------------------------
 !                  GEOS-Chem Global Chemical Transport Model                  !
@@ -5806,6 +6300,69 @@
       KNH3p = Hnh3_T * Ka1_T * pNH3 / Kw
 
       END FUNCTION kNH3
+!EOC
+!------------------------------------------------------------------------------
+!                  GEOS-Chem Global Chemical Transport Model                  !
+!------------------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: dNH4
+!
+! !DESCRIPTION: Function dNH4
+!\\
+!\\
+! !INTERFACE:
+!
+      FUNCTION dNH4 ( P, T, LWC, HPLUS, NH3, Kw ) RESULT ( dNH4p )
+!
+! !INPUT PARAMETERS: 
+!
+      REAL(fp),  INTENT(IN) :: T, P, LWC, HPLUS, NH3, Kw
+!
+! !OUTPUT PARAMETERS: 
+!
+      REAL(fp)              :: dNH4p !SJS 20190528
+!
+! !REVISION HISTORY:
+!  25 Jan 2012 - M. Payer    - Added ProTeX headers
+!  28 Apr 2015 - E. Lundgren - Input pressure is now dry air partial pressure
+!  22 Mar 2017 - M. Sulprizio- Dhnh3 value is from Table 7.3 of Seinfeld and
+!                              Pandis (2006, pp 289) and should be positive for
+!                              consistency with the way it is used here. Also,
+!                              the value of R, in units of kcal mol-1 K-1, is
+!                              1.986x10^-3, not 0.04. (V. Shah)
+!EOP
+!------------------------------------------------------------------------------
+!BOC
+!
+! !DEFINED PARAMETERS:
+!
+      ! NH3 dissociation contants
+      REAL(fp),  PARAMETER  :: Ka1 = 1.7e-5
+      REAL(fp),  PARAMETER  :: Hnh3 = 62.
+      REAL(fp),  PARAMETER  :: Dhnh3 = 8.17+0_fp/1.986e-3_fp
+      REAL(fp),  PARAMETER  :: DhrKa1 = -450.
+
+      ! Variables
+      REAL(fp)              :: Hnh3_T, Ka1_T
+      REAL(fp)              :: C1, C2
+
+      !=================================================================
+      ! dNH4 begins here!
+      !=================================================================
+
+      !NH3 dissolution constants
+      Hnh3_T = Hnh3*exp(Dhnh3*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+      Ka1_T = Ka1*exp(DhrKa1*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+
+      !NH3 dissolution
+      C1 = Hnh3_T * Ka1_T * NH3 * P / Kw
+      C2 = Hnh3_T * 0.08205e+0_fp * T * LWC
+
+      dNH4p = C1 * (1.e+0_fp+C2) * 
+     &       ( ( 1.e+0_fp + C2 + Ka1_T*C2*HPLUS/Kw )**(-2.e+0_fp) )
+
+      END FUNCTION dNH4
 !EOC
 !------------------------------------------------------------------------------
 !                  GEOS-Chem Global Chemical Transport Model                  !

@@ -3942,7 +3942,7 @@ CONTAINS
        ! being requested as diagnostic output when the corresponding
        ! array has not been allocated.
        !-------------------------------------------------------------------
-       DO N = 1, 21
+       DO N = 1, 22
           
           ! Select the diagnostic ID
           SELECT CASE( N )
