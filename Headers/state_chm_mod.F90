@@ -130,6 +130,7 @@ MODULE State_Chm_Mod
      ! Cloud quantities
      !----------------------------------------------------------------------
      REAL(fp),          POINTER :: pHCloud    (:,:,:  ) ! Cloud pH [-]
+     REAL(fp),          POINTER :: ISCloud    (:,:,:  ) ! Cloud IS [M] SJS
 
      !----------------------------------------------------------------------
      ! Fields for KPP solver
@@ -434,6 +435,7 @@ CONTAINS
 
     ! pH/alkalinity
     State_Chm%pHCloud       => NULL()
+    State_Chm%ISCloud       => NULL() !SJS
     State_Chm%SSAlk         => NULL()
 
     ! Fields for sulfate chemistry
@@ -1140,6 +1142,19 @@ CONTAINS
        IF ( RC /= GC_SUCCESS ) RETURN
 
        !--------------------------------------------------------------------
+       ! ISCloud SJS
+       !--------------------------------------------------------------------
+       chmId = 'ISCloud'
+       ALLOCATE( State_Chm%ISCloud( IM, JM, LM ), STAT=RC )
+       CALL GC_CheckVar( 'State_Chm%ISCloud', 0, RC )
+       IF ( RC /= GC_SUCCESS ) RETURN
+       State_Chm%ISCloud = 0.0_fp
+       CALL Register_ChmField( am_I_Root, chmID, State_Chm%ISCloud,          &
+                               State_Chm, RC                                )
+       CALL GC_CheckVar( 'State_Chm%ISCloud', 1, RC )
+       IF ( RC /= GC_SUCCESS ) RETURN
+
+       !--------------------------------------------------------------------
        ! SSAlk
        !--------------------------------------------------------------------
        ALLOCATE( State_Chm%SSAlk( IM, JM, LM, 2 ), STAT=RC )
@@ -1838,6 +1853,14 @@ CONTAINS
        State_Chm%pHCloud => NULL()
     ENDIF
 
+    ! SJS 20190605
+    IF ( ASSOCIATED( State_Chm%ISCloud ) ) THEN
+       DEALLOCATE( State_Chm%ISCloud, STAT=RC )
+       CALL GC_CheckVar( 'State_Chm%ISCloud', 2, RC )
+       IF ( RC /= GC_SUCCESS ) RETURN
+       State_Chm%ISCloud => NULL()
+    ENDIF
+
     IF ( ASSOCIATED( State_Chm%SSAlk ) ) THEN
        DEALLOCATE( State_Chm%SSAlk, STAT=RC )
        CALL GC_CheckVar( 'State_Chm%SSAlk', 2, RC )
@@ -2511,6 +2534,11 @@ CONTAINS
        CASE( 'PHCLOUD' )
           IF ( isDesc  ) Desc  = 'Cloud pH'
           IF ( isUnits ) Units = '1'
+          IF ( isRank  ) Rank  =  3
+
+       CASE( 'ISCLOUD' ) ! SJS
+          IF ( isDesc  ) Desc  = 'Cloud IS'
+          IF ( isUnits ) Units = 'mol/L'
           IF ( isRank  ) Rank  =  3
 
        CASE( 'SSALKACCUM' )
