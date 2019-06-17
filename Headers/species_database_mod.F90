@@ -961,8 +961,8 @@ CONTAINS
              Henry_CR      = 6800.0_f8
 #else
              DD_Hstar_Old  = 3.0e+3_fp
-             Henry_K0      = 3.0e+3_f8
-             Henry_CR      = 7200.0_f8
+             Henry_K0      = 3.2e+3_f8 !SJS
+             Henry_CR      = 7100.0_f8 !SJS
 #endif
              WD_RetFactor  = 2.0e-2_fp
 
@@ -3191,6 +3191,33 @@ CONTAINS
              WD_AerScavEff = 1.0_fp
              WD_KcScaleFac = KcScale
              WD_RainoutEff = RainEff
+
+          ! Add new tracer HMSA, SJS 20190605
+          !---------------------------------
+          CASE( 'HMSA' )
+
+             ! Halve the Kc (cloud condensate -> precip) rate
+             ! for the temperature range 237 K <= T < 258 K.
+             KcScale       = (/ 1.0_fp, 0.5_fp, 1.0_fp /)
+
+             ! Turn off rainout only when 237 K <= T < 258K.
+             RainEff       = (/ 1.0_fp, 0.0_fp, 1.0_fp /)
+
+             FullName      = 'Hydroxymethanesulfonate'
+             Formula       = 'CH3SO4'
+             MW_g          = 111.0_fp
+             Is_Gas        = F
+             Is_Drydep     = T
+             Is_Wetdep     = T
+!             Is_HygroGrowth= T
+             Density       = 1300.0_fp !the same with OC
+             DD_DvzAerSnow = 0.03_fp
+             DD_F0         = 0.0_fp
+             DD_Hstar_Old  = 0.0_fp
+             WD_AerScavEff = 1.0_fp
+             WD_KcScaleFac = KcScale
+             WD_RainoutEff = RainEff
+          !---------------------------------
 
           CASE( 'SO4S' )
 

@@ -248,6 +248,7 @@
       REAL(fp),  ALLOCATABLE :: PSO4P5_SO2(:,:,:)
       REAL(fp),  ALLOCATABLE :: PSO4P6_SO2(:,:,:)
       REAL(fp),  ALLOCATABLE :: PSO4P7_SO2(:,:,:)
+      REAL(fp),  ALLOCATABLE :: PHMSA_SO2(:,:,:) !SJS
       REAL(fp),  ALLOCATABLE :: PSO4_SS(:,:,:)
       REAL(fp),  ALLOCATABLE :: PNITs(:,:,:)
       REAL(fp),  ALLOCATABLE :: PNIT_dust(:,:,:,:) ! tdf
@@ -294,7 +295,8 @@
       INTEGER                :: id_NK8,    id_NK10,   id_NK20  
       INTEGER                :: id_NO3,    id_O3,     id_OH    
       INTEGER                :: id_SALA,   id_SALC,   id_SF1   
-      INTEGER                :: id_SO2,    id_SO4 !,    id_SO4aq SJS
+      INTEGER                :: id_SO2,    id_SO4,    id_HMSA !SJS
+      INTEGER                :: id_HCHO !,id_SO4aq SJS
       INTEGER                :: id_SO4d1,  id_SO4d2,  id_SO4d3 
       INTEGER                :: id_SO4d4,  id_SO4s,   id_pFe
       INTEGER                :: id_HOBr,   id_SO4H1,  id_SO4H2
@@ -558,6 +560,7 @@
       PSO4P5_SO2   = 0e+0_fp
       PSO4P6_SO2   = 0e+0_fp
       PSO4P7_SO2   = 0e+0_fp
+      PHMSA_SO2    = 0e+0_fp !SJS
       PSO4_SS    = 0e+0_fp
       PNITs      = 0e+0_fp
       PSO4_dust  = 0e+0_fp     ! tdf 04/17/08
@@ -2687,12 +2690,14 @@
       REAL(fp)              :: F1,     RK1,     RK2,    RK3,  SO20
       REAL(fp)              :: SO2_cd, H2O20,   O3,     L2S,  L3S
       REAL(fp)              :: LWC,    KaqH2O2, KaqO3,  PATM
+      REAL(fp)              :: KaqHCHO, KdHMSA, HCHO0, HCHO1 ! SJS
       REAL(fp)              :: ALK,    ALK1,    ALK2,    SO2_ss
       REAL(fp)              :: AlkA,   AlkC
       REAL(fp)              :: Kt1,    Kt2,     AREASS1, AREASS2
       REAL(fp)              :: PSO4E,  PSO4F,   Kt1N,    Kt2N
-      REAL(fp)              :: XX,     IonStr,  TNVC, TNA, TCL ! SJS
-      REAL(fp)              :: HPLUS,  SO4nss, TNH3,   TNO3,  GNO3, ANIT
+      REAL(fp)              :: XX, IonStr,  TNVC, TNA, TCL, THMSA ! SJS
+      REAL(fp)              :: SRhcho, L6, L6S, L7S, f_sro3 ! SJS
+      REAL(fp)              :: HPLUS, SO4nss, TNH3, TNO3, GNO3, ANIT
       REAL(fp)              :: LSTOT,  ALKdst, ALKss,  ALKds, NH3
       REAL(fp)              :: SSCvv,  aSO4,   SO2_sr, SR,    TANIT
       !tdf 03/02/2K9
@@ -2706,7 +2711,8 @@
       REAL(fp)              :: HSO3aq, SO3aq                 !(qjc, 06/10/16) 
       REAL(fp)              :: SO4H1_vv, SO4H2_vv, LSTOT0    !(qjc, 06/20/16) 
       REAL(fp)              :: SO2_ss0, rSIV, fupdateHOBr_0  !(qjc, 06/20/16) 
-      REAL(fp)              :: HCO3, HCHOBr, KO3, KHOBr, f_srhobr, HOBr0  !(qjc, 01/31/17) 
+      REAL(fp)              :: HCO3,HCHOBr,KO3,KHOBr,f_srhobr,HOBr0  !(qjc, 01/31/17) 
+      REAL(fp)              :: HCHCHO, KHCHO2, HMSA0, HMSA1 ! SJS
       REAL(fp)              :: TMP
 
       REAL(fp)              :: KaqO2, L4, L4S, MnII, FeIII
@@ -2819,23 +2825,24 @@
 !$OMP+DEFAULT( SHARED )
 !$OMP+PRIVATE( I, J, L, SO20, H2O20, O3, PATM, TK, K0, M, KK, F1, RK1  )
 !$OMP+PRIVATE( RK2, RK, RKT, SO2_cd, L1, Ld, L2, L2S, L3, L3S, FC, LWC )
-!$OMP+PRIVATE( KaqH2O2, KaqO3, ALK, ALK1, ALK2                         )
+!$OMP+PRIVATE( KaqH2O2, KaqO3, ALK, ALK1, ALK2, KaqHCHO                ) !SJS
+!$OMP+PRIVATE( KdHMSA, L6, L6S, L7S, HCHO0, HCHO1, HMSA0, HMSA1        ) !SJS
 !$OMP+PRIVATE( Kt1, Kt2, AREASS1, AREASS2, SO2_ss, Kt1N, Kt2N          )
-!$OMP+PRIVATE( PSO4E, PSO4F, XX, IonStr, TNVC, TNA, TCL                ) !SJS
+!$OMP+PRIVATE( PSO4E, PSO4F, XX, IonStr, TNVC, TNA, TCL, THMSA         ) !SJS
 !$OMP+PRIVATE( HPLUS, SO4nss, TNH3, TNO3,  GNO3, ANIT,   LSTOT, ALKdst )
 !$OMP+PRIVATE( ALKds, ALKss,  NH3,  SSCvv, aSO4, SO2_sr, SR,    TANIT  )
 !$OMP+PRIVATE( BULK,  SIZE_RES,     RC, AlkA, AlkC                     )
 !$OMP+PRIVATE( ALK_d, KTS, KTN, PSO4_d, PH2SO4_d, PNIT_d, SO2_gas      ) !tdf
 !$OMP+PRIVATE( KTH, H2SO4_cd, H2SO4_gas, Ki                            ) !tdf
 !$OMP+PRIVATE( IBIN, PSO4d_tot, PH2SO4d_tot, PNITd_tot, ALKA_d         )
-!$OMP+PRIVATE( L5, L5S, SRo3, SRhobr                                   ) !qjc
+!$OMP+PRIVATE( L5, L5S, SRo3, SRhobr, SRhcho, f_sro3                   ) !SJS
 !$OMP+PRIVATE( L3_1, L3S_1,KaqO3_1, L5_1, L5S_1,HSO3aq,SO3aq           ) !qjc
 !$OMP+PRIVATE( SO4H1_vv, SO4H2_vv, LSTOT0, SO2_ss0, rSIV,fupdateHOBr_0 ) !qjc
 !$OMP+PRIVATE( HCO3, HCHOBr, KO3, KHOBr, f_srhobr, HOBr0, TMP          ) !qjc
 !$OMP+PRIVATE( L4,    L4S,     KaqO2,  DUST, Mn_ant, Mn_nat, Mn_tot    )
 !$OMP+PRIVATE( Fe_ant, Fe_nat, Fe_tot, Fe_d, Mn_d,   FeIII,  MnII      )
 !$OMP+PRIVATE( Fe_d_ant, Fe_d_nat                                      )
-!$OMP+PRIVATE( Mn_d_ant, Mn_d_nat                                      ) !SJS
+!$OMP+PRIVATE( Mn_d_ant, Mn_d_nat, KHCHO2, HCHCHO                      ) !SJS
 !$OMP+SCHEDULE( DYNAMIC )
       DO L = 1, LLPAR 
       DO J = 1, JJPAR
@@ -2850,8 +2857,11 @@
          IF ( .not. State_Met%InChemGrid(I,J,L) ) CYCLE
 
          ! Initial SO2, H2O2, HOBr, and O3 [v/v]
-         SO20   = Spc(I,J,L,id_SO2)         
+         SO20   = Spc(I,J,L,id_SO2)
          H2O20  = Spc(I,J,L,id_H2O2)
+         ! Initial HCHO, HMSA [v/v], SJS 20190609
+         HCHO0  = Spc(I,J,L,id_HCHO)
+         HMSA0  = Spc(I,J,L,id_HMSA)
          IF ( IS_FULLCHEM ) THEN
             ! HOBr is only a defined species in fullchem simulations
             HOBr0  = Spc(I,J,L,id_HOBr) !(qjc, 01/30/17)
@@ -2896,7 +2906,7 @@
 
          ! RK: total reaction rate [1/s]
          RK     = ( RK1 + RK2 )
-       
+
          ! RKT: RK * DTCHEM [unitless] (bmy, 6/1/00)
          RKT    =  RK * DTCHEM
 
@@ -3071,6 +3081,11 @@
 
          ! Zero variables
          KaqH2O2 = 0.e+0_fp
+         KaqHCHO = 0.e+0_fp ! SJS 20190608
+         KdHMSA  = 0.e+0_fp
+         L6      = 0.e+0_fp ! SJS 20190610
+         L6S     = 0.e+0_fp
+         L7S     = 0.e+0_fp
          KaqO3   = 0.e+0_fp
          KaqO3_1 = 0.e+0_fp !(qjc, 04/10/16)
          L2      = 0.e+0_fp
@@ -3176,6 +3191,13 @@
             SO4nss  =  Spc(I,J,L,id_SO4) * State_Met%AIRDEN(I,J,L) *
      &                 0.7e+0_fp / ( AIRMW * LWC )
 
+            ! Get HMSA concentration and convert from [v/v] to
+            ! [moles/liter]
+            ! Use a cloud scavenging ratio of 0.7
+            ! SJS 20190609
+            THMSA  =  Spc(I,J,L,id_HMSA) * State_Met%AIRDEN(I,J,L) *
+     &                 0.7e+0_fp / ( AIRMW * LWC )
+
             ! Get total nonvolatile cations and convert to [moles/liter]
             ! Use a cloud scavenging ratio of 0.7 
             ! A TNVC : DUST molar ratio of 0.08 
@@ -3188,14 +3210,16 @@
             ! SJS, 20190604
             ! Now only include fine and coarse sea salt
             ! Get total chlorine concentration [v/v]
+            ! Consider other ions equivalence, SJS 20190614
             TCL =  ( Spc(I,J,L,id_SALA) + Spc(I,J,L,id_SALC) ) *
      &             0.7e+0_fp * 
-     &             ( 31.4e+0_fp * 0.5504e+0_fp / 35.45e+0_fp )
+     &             ( 31.4e+0_fp * 0.6085e+0_fp / 35.45e+0_fp )
 
             ! Get total sodium concentration [moles/liter]
+            ! Consider other ions equivalence, SJS 20190614
             TNA =  ( Spc(I,J,L,id_SALA) + Spc(I,J,L,id_SALC) ) *
      &             0.7e+0_fp * 
-     &             ( 31.4e+0_fp * 0.3061e+0_fp / 22.99e+0_fp ) *
+     &             ( 31.4e+0_fp * 0.3963e+0_fp / 22.99e+0_fp ) *
      &             State_Met%AIRDEN(I,J,L) / ( AIRMW * LWC ) 
 
             ! Get total ammonia (NH3 + NH4+) concentration [v/v]
@@ -3219,11 +3243,21 @@
         ! Calculate cloud pH
         ! Add TNVC, SJS 20190514
         ! Add TNA and TCL from fine and coarse sea salt, SJS 20190604
+        ! Add THMSA, SJS 20190608
+
+        ! SJS-OPTION
         IF ( -1 > 0 ) THEN
-           CALL GET_HPLUS( SO4nss, TNVC, TNH3, TNO3, SO2_ss, 
+           TNVC = 0e+0_fp
+           TNA  = 0e+0_fp
+           TCL  = 0e+0_fp
+        ENDIF
+
+        ! SJS-OPTION
+        IF ( -1 > 0 ) THEN
+           CALL GET_HPLUS( SO4nss,THMSA,TNVC,TNH3,TNO3,SO2_ss,
      &          TCL, TNA, TK, PATM, LWC, HPLUS_45, HPLUS, IonStr )
         ELSE
-           CALL GET_HPLUS_NEW( SO4nss, TNVC, TNH3, TNO3, SO2_ss, 
+           CALL GET_HPLUS_NEW( SO4nss,THMSA,TNVC,TNH3,TNO3,SO2_ss,
      &          TCL, TNA, TK, PATM, LWC, HPLUS_45, HPLUS, IonStr )
         ENDIF
 
@@ -3271,7 +3305,7 @@
                ENDIF
 
                ! Calculate Mn anthropogenic [ng m-3]
-               ! assume anthropogenic Mn is 1/30 times anthropogenic Fe
+               ! assume anthropogenic Mn is 1/10 times anthropogenic Fe
                Mn_ant = Fe_ant / 10e+0_fp
 
                ! Calculate total Mn and Fe [ng m-3]
@@ -3339,10 +3373,78 @@
             ENDIF
 
             ! Compute aqueous rxn rates for SO2
-            CALL AQCHEM_SO2( LWC,     TK,    PATM,    SO2_ss, H2O20, 
-     &                       O3,      HPLUS, IonStr,  MnII,    FeIII,
+            ! Add HCHO rxn rates, SJS 20190607
+            ! Do not need use O3 and H2O2, SJS 20190608
+            CALL AQCHEM_SO2( LWC,     TK,    PATM,    SO2_ss,
+     &                       HPLUS, IonStr,  MnII,    FeIII,
      &                       KaqH2O2, KaqO3, KaqO3_1, KaqO2,
+     &                       KaqHCHO, KdHMSA,
      &                       HSO3aq,  SO3aq ) 
+
+            !----------------------------------------------------------
+            ! SJS 20190608
+            ! Compute decomposition of HMSA (HMSA => SO2 + HCHO)
+            ! Prevent floating-point exception
+            ! by not allowing the exponential to go to infinity if 
+            ! the argument is too large.  (win, bmy, 1/4/09)
+            !----------------------------------------------------------
+
+            ! Argument of the exponential
+            XX  = -1.e+0_fp * KdHMSA * DTCHEM
+
+            ! Test if EXP(XX) can be computed w/o numerical exception
+            IF ( IS_SAFE_EXP( XX ) ) THEN
+
+               ! HMSA after decomposition [v/v]
+               HMSA1 = HMSA0 * EXP( XX )
+
+            ELSE
+
+               ! HMSA after decomposition [v/v]
+               HMSA1 = 0.e+0_fp
+
+            ENDIF
+
+            ! Add to SO2 and HCHO [v/v] SJS 20190610
+            SO2_ss0 = SO2_ss ! box-average conc., initial SO2
+            L7S = HMSA0 - HMSA1 !Actually formation of SO2 and HCHO
+            SO2_ss = SO2_ss + L7S ! cloud FC conc.
+            HCHO1 = HCHO0 + L7S ! cloud FC conc.
+
+            !----------------------------------------------------------
+            ! SJS 20190608
+            ! Compute formation of HMSA (SO2 + HCHO => HMSA)
+            ! Prevent floating-point exception
+            ! by not allowing the exponential to go to infinity if 
+            ! the argument is too large.  (win, bmy, 1/4/09)
+            !----------------------------------------------------------
+
+            ! Argument of the exponential
+            XX = ( SO2_ss - HCHO1 ) * KaqHCHO * DTCHEM 
+
+            ! Test if EXP(XX) can be computed w/o numerical exception
+            IF ( IS_SAFE_EXP( XX ) .and. ABS( XX ) > 0e+0_fp ) THEN
+
+               ! Aqueous phase SO2 loss rate w/ HCHO [v/v/timestep]
+               L6  = EXP( XX )
+
+               ! Loss by HCHO [v/v]
+               L6S = SO2_ss * HCHO1 * 
+     &              (L6 - 1.e+0_fp)/((SO2_ss * L6) - HCHO1)
+
+            ELSE
+
+               ! Follow the same logic for L6S as described in
+               ! Jintai Lin's note below (bmy, 4/28/10)
+               IF ( XX > 0.e+0_fp ) THEN 
+                  L6S = HCHO1 
+               ELSE IF ( XX < 0.e+0_fp) THEN
+                  L6S = SO2_ss
+               ELSE
+                  !(qjc, 04/10/16) different solution when SO2_ss = HCHO
+                  L6S = SO2_ss - 1/(KaqHCHO*DTCHEM+1/SO2_ss)
+               ENDIF
+            ENDIF
 
             !----------------------------------------------------------
             ! Compute loss by H2O2.  Prevent floating-point exception
@@ -3400,7 +3502,7 @@
                L3S = SO2_ss * O3 * (L3 - 1.e+0_fp)/((SO2_ss * L3) - O3)
 
             ELSE
- 
+
                ! Follow the same logic for L3S as described in
                ! Jintai Lin's note above (bmy, 4/28/10)
                IF ( XX > 0.e+0_fp ) THEN 
@@ -3457,7 +3559,7 @@
                !----------------------------------------------------------
 
                ! Argument of the exponential
-               XX = -KaqO2 * DTCHEM
+               XX = -1.e+0_fp * KaqO2 * DTCHEM
 
                IF ( IS_SAFE_EXP( XX ) ) THEN
                   ! Aqueous phase SO2 loss rate w/ O2 [v/v/timestep]
@@ -3494,10 +3596,15 @@
             L5S   = SO4H1_vv + SO4H2_vv
             L5S_1 = SO4H2_vv
 
+            ! SJS 20190610
+            ! do not multiply by FC if it is not divided by FC at the begining
+            L5S   = L5S / FC
+            L5S_1 = L5S_1 / FC
+
             ! make sure sulfate produced is less than SO2 available
             ! (qjc, 06/20/16)
             IF (L5S > SO2_ss) THEN
-               fupdateHOBr_0 = SO2_ss/L5S
+               fupdateHOBr_0 = 1.e+0_fp * SO2_ss/L5S
                L5S   = SO2_ss
                L5S_1 = SO2_ss * L5S_1/L5S
             ELSE
@@ -3506,40 +3613,45 @@
                fupdateHOBr_0 = 1.e+0_fp
             ENDIF
 
-            L2S   =  L2S   * FC
-            L3S   =  L3S   * FC    
-            L3S_1 =  L3S_1 * FC   !(qjc, 06/20/16)
-            L4S   =  L4S   * FC
-            L5S   =  L5S          !(qjc, 06/20/16), do not multiply by FC if it
-                                  ! is not divided by FC at the begining
-            L5S_1 =  L5S_1        !(qjc, 06/20/16)
+            ! SJS 20190610
+            ! Set L6S to be zero if other one-way processes are fast
+            ! SJS-OPTION
+            IF (-1 > 0) THEN
+               LSTOT0 = L2S + L3S + L4S + L5S
+               IF (LSTOT0 > SO2_ss) THEN
+                  L6S = 0.e+0_fp
+               ENDIF
+            ENDIF
 
-            LSTOT0 = L2S + L3S + L4S + L5S ! (qjc, 11/04/16)
+            LSTOT0 = L2S + L3S + L4S + L5S + L6S ! SJS 20190610
 
             ! make sure sulfate produced is less than SO2 available
             ! (qjc, 06/20/16)
+            ! Total loss cannot exceed FC conc, SJS 20190608
             IF (LSTOT0 > SO2_ss) THEN
 
-               L2S   = SO2_ss * L2S   / LSTOT0
-               L3S   = SO2_ss * L3S   / LSTOT0
-               L4S   = SO2_SS * L4S   / LSTOT0
-               L5S   = SO2_ss * L5S   / LSTOT0
-               L3S_1 = SO2_ss * L3S_1 / LSTOT0
-               L5S_1 = SO2_ss * L5S_1 / LSTOT0
+               L2S   = SO2_ss * FC * L2S   / LSTOT0
+               L3S   = SO2_ss * FC * L3S   / LSTOT0
+               L4S   = SO2_ss * FC * L4S   / LSTOT0
+               L5S   = SO2_ss * FC * L5S   / LSTOT0
+               L6S   = SO2_ss * FC * L6S   / LSTOT0 !SJS
+               L3S_1 = SO2_ss * FC * L3S_1 / LSTOT0
+               L5S_1 = SO2_ss * FC * L5S_1 / LSTOT0
 
                ! This is the ratio used to calculate the actual removal of
                ! HOBr by SO2 for use in gckpp_HetRates.F90 (qjc, 06/20/16)
                State_Chm%fupdateHOBr(I,J,L) = fupdateHOBr_0 *
-     &                                        SO2_ss/LSTOT0
-     
+     &                                        SO2_ss / LSTOT0
+
             ELSE
 
-               L2S   = L2S
-               L3S   = L3S
-               L4S   = L4S
-               L5S   = L5S
-               L3S_1 = L3S_1
-               L5S_1 = L5S_1
+               L2S   = L2S * FC
+               L3S   = L3S * FC
+               L4S   = L4S * FC
+               L5S   = L5S * FC
+               L6S   = L6S * FC !SJS
+               L3S_1 = L3S_1 * FC
+               L5S_1 = L5S_1 * FC
 
                ! This is the ratio used to calculate the actual removal of
                ! HOBr by SO2 (feedback to ehc_mod.f) (qjc, 06/20/16)
@@ -3594,7 +3706,7 @@
                SIZE_RES = 1
             ELSEIF( gno3 > NH3 ) THEN
                IF ( SO2_ss >= 5.e-9_fp          .and. 
-     &              H2O20  >= SO20   ) 
+     &              H2O20  >= SO2_ss   ) ! SJS
      &              BULK    = 1
                IF ( LWC    >= 0.3e-6_fp         .and.
      &              SO2_ss >= 3.e-9_fp          .and. 
@@ -3708,55 +3820,68 @@
             IF ( SIZE_RES == 1 .AND. IS_WATER( I, J, State_Met) .AND. 
      &           TK > 268.15 ) THEN
 
-	       ! Get total in-cloud sulfate production based on bulk cloud pH
+               ! Get total in-cloud sulfate production based on bulk cloud pH
                ! calculations for use in HET_DROP_CHEM
-               LSTOT = (L2S + L3S + L4S + L5S) / FC !(qjc, 06/20/16)
+               ! Add L6S SJS 20190608
+               ! Cloud FC concentration [v/v] SJS 20190609
+               LSTOT = (L2S + L3S + L4S + L5S + L6S) / FC !(qjc, 06/20/16)
 
-	       ! Get coarse-mode sea-salt concentration for use in
+               ! Get coarse-mode sea-salt concentration for use in
                ! HET_DROP_CHEM [v/v]
                ! Note that it is better to use coarse sea salt alkalinity
                ! tracer if it is being transported (bec, 12/23/11)
                SSCvv  = Spc(I,J,L,id_SALC)
 
-	       ! Get sulfate concentrations for use in HET_DROP_CHEM [v/v]
+               ! Get sulfate concentrations for use in HET_DROP_CHEM [v/v]
                aSO4  =  Spc(I,J,L,id_SO4) 
 
                ! This is to make sure HET_DROP_CHEM does not compute more
                ! sulfate then there is SO2
-               ! Add L5S (qjc, 11/04/16)
-               SO2_sr = MAX( SO2_ss - ( L2S + L3S + L4S + L5S ), MINDAT)
+               SO2_sr = MAX( SO2_ss - LSTOT, MINDAT )
 
                CALL HET_DROP_CHEM( I,    J,   L,      LSTOT, SSCvv, 
-     &                             aSO4, NH3, SO2_sr, H2O20, GNO3,  SR,
+     &                             aSO4, NH3, SO2_sr, H2O20, GNO3, SR,
      &                             Input_Opt, State_Met, State_Chm )
 
                ! Henry's Law constant of O3 and HOBr (M atm-1)
+               ! And HCHO (M atm-1), SJS 20190608
                HCO3   = 1.13e-2_fp * EXP( 8.51e+0_fp *
      &                  ( 298.15e+0_fp / TK - 1.e+0_fp ) )
                HCHOBr = 1.3e+3_fp        
+               HCHCHO = 2.5e+0_fp *
+     &         EXP(3.3e+3_fp*((1.e+0_fp/TK)-(1.e+0_fp/298.e+0_fp)))
 
                ! Rate coefficient (M-1 s-1)
+               ! And HCHO (M-1 s-1), SJS 20190608
                KO3   = 7.32e+14_fp * EXP( -4.03e+3_fp / TK ) ! for O3+SO3
                KHOBr = 5.0e+9_fp                            ! for HOBr+SO3
+               KHCHO2 = 3.8e+6_fp *
+     &         EXP(-2.5e+3_fp*((1.e+0_fp/TK)-(1.e+0_fp/298.e+0_fp))) !for HCHO+SO3
+
                ! Make sure we don't divide by zero (ckeller, 1/25/18) 
-               TMP = KHOBr*HOBr0*HCHOBr + KO3*O3*HCO3
+               TMP = KHOBr*HOBr0*HCHOBr + KO3*O3*HCO3 + 
+     &               KHCHO2*HCHO1*HCHCHO
                IF ( TMP > 0.0_fp ) THEN 
                   f_srhobr = KHOBr*HOBr0*HCHOBr / TMP
+                  f_sro3   = KO3*O3*HCO3 / TMP !SJS
                   SRhobr   = SR * f_srhobr
-                  SRo3     = SR * (1-f_srhobr)
+                  SRo3     = SR * f_sro3
+                  SRhcho   = SR * ( 1.e+0_fp - f_srhobr - f_sro3 ) !SJS
                ELSE
                   SR     = 0.e+0_fp
                   SRhobr = 0.e+0_fp
                   SRo3   = 0.e+0_fp
+                  SRhcho = 0.e+0_fp !SJS
                   so2_sr = 0.e+0_fp
                ENDIF
-	    ELSE
+            ELSE
                SR     = 0.0_fp
                SRhobr = 0.0_fp
                SRo3   = 0.0_fp
+               SRhcho = 0.0_fp !SJS
                so2_sr = 0.0_fp
                LSTOT  = 0.0_fp
-	    ENDIF
+            ENDIF
 
             ! We have used the in-cloud LWC to compute the sulfate
             ! aqueous chemistry.  We get the appropriate grid-box averaged 
@@ -3766,18 +3891,11 @@
             SR     =  SR     * FC
             SRo3   =  SRo3   * FC !(qjc, 04/10/16)
             SRhobr =  SRhobr * FC !(qjc, 04/10/16)
-
-            ! Store initial SO2_ss (qjc, 06/20/16)
-            SO2_ss0 = SO2_ss
-
-            ! Make sure SO2_ss and H2O20 are in the proper range
-            ! Add L5S (qjc, 11/04/16)
-            SO2_ss = MAX( SO2_ss - ( L2S+L3S+L4S+L5S+SR ), MINDAT )
-            H2O20  = MAX( H2O20  - L2S,                    MINDAT )
+            SRhcho =  SRhcho * FC ! SJS 20190608
 
             ! Factor to calculate effective SO3 and HSO3 in aqchem_so2 to
             ! be used in HOBr+HSO3/SO3 (qjc, 06/20/16)
-            rSIV = SO2_sr/SO2_ss0
+            rSIV = SO2_sr / SO2_ss
             rSIV = MAX(rSIV, 0.e+0_fp)
             rSIV = MIN(rSIV, 1.e+0_fp)
 
@@ -3785,13 +3903,18 @@
             State_Chm%HSO3_AQ(I,J,L) = HSO3aq*(1+rSIV)/2
             State_Chm%SO3_AQ(I,J,L)  = SO3aq *(1+rSIV)/2
 
+            ! Make sure SO2_ss and H2O20 are in the proper range
+            ! Add L5S (qjc, 11/04/16)
+            ! Add L6S, SJS 20190609
+            ! Box-average concentration [v/v], SJS 20190610
+            SO2_ss = MAX( SO2_ss0 + L7S*FC - 
+     &                  ( L2S+L3S+L4S+L5S+L6S+SR ), MINDAT )
+            H2O20  = MAX( H2O20 - L2S, MINDAT )
+            HCHO0  = MAX( HCHO0 + L7S*FC - L6S - SRhcho, MINDAT )
+
             ! Update SO2 level, save SO2[ppv], H2O2[ppv] for WETDEP
             SO2s( I,J,L) = SO2_ss
             H2O2s(I,J,L) = H2O20
-
-            ! SO2 chemical loss rate  = SO4 production rate [v/v/timestep]
-            PSO4_SO2(I,J,L) = LSTOT + PSO4E
-            PSO4_ss (I,J,L) = PSO4F
 
          ELSE
 
@@ -3799,15 +3922,19 @@
             ! save the original concentrations into SO2 and H2O2
             H2O2s(I,J,L) = MAX( H2O20,  1.0e-32_fp )
             SO2s(I,J,L ) = MAX( SO2_ss, 1.0e-32_fp )
+            HCHO0        = MAX( HCHO0,  1.0e-32_fp ) !SJS
             L2S          = 0.e+0_fp
             L3S          = 0.e+0_fp
             L3S_1        = 0.e+0_fp !(qjc, 11/04/16)
             L4S          = 0.e+0_fp
             L5S          = 0.e+0_fp !(qjc, 11/04/16)
             L5S_1        = 0.e+0_fp !(qjc, 11/04/16)
+            L6S          = 0.e+0_fp !SJS 20190609
+            L7S          = 0.e+0_fp !SJS 20190610
             SR           = 0.e+0_fp
             SRhobr       = 0.e+0_fp
             SRo3         = 0.e+0_fp
+            SRhcho       = 0.e+0_fp !SJS 20190610
             HPLUS        = 0.e+0_fp
             IonStr       = 0.e+0_fp
 
@@ -3820,16 +3947,13 @@
             ! HOBr by SO2 for use in gckpp_HetRates.F90 (qjc, 06/20/16)
             State_Chm%fupdateHOBr(I,J,L) = 0.e+0_fp
 
-            ! SO2 chemical loss rate  = SO4 production rate [v/v/timestep]
-            PSO4_SO2(I,J,L) = PSO4E
-            PSO4_ss (I,J,L) = PSO4F
-
          ENDIF
 
          ! Store updated SO2, H2O2 back to the tracer arrays
          If (FullRun) Then 
             Spc(I,J,L,id_SO2)  = SO2s( I,J,L)
             Spc(I,J,L,id_H2O2) = H2O2s(I,J,L)
+            Spc(I,J,L,id_HCHO) = HCHO0 !SJS 20190610
 
             ! Set SO4H1 and SO4H2 to zero at end of each timestep
             IF ( id_SO4H1 > 0 ) Spc(I,J,L,id_SO4H1) = 0.0e+0_fp
@@ -3838,7 +3962,9 @@
 
          ! SO2 chemical loss rate  = SO4 production rate [v/v/timestep]
          ! Add L5S (qjc, 11/04/16)
-         PSO4_SO2(I,J,L) = L1 + L2S + L3S + L4S + L5S + PSO4E + SR
+         ! Add L6S, L7S and SRhcho, SJS 20190610
+         PSO4_SO2(I,J,L) = L1 + L2S + L3S + L4S + L5S + 
+     &                     PSO4E + SRo3 + SRhobr
          PSO4P1_SO2(I,J,L) = L1 !SJS
          PSO4P2_SO2(I,J,L) = L2S
          PSO4P3_SO2(I,J,L) = L3S + SRo3
@@ -3846,6 +3972,9 @@
          PSO4P5_SO2(I,J,L) = L5S + SRhobr
          PSO4P6_SO2(I,J,L) = PSO4E
          PSO4P7_SO2(I,J,L) = SR
+
+         ! Add L6S and L7S, SJS 20190609
+         PHMSA_SO2(I,J,L) = L6S + SRhcho - L7S*FC
 
          ! Production of sulfate on sea salt
          PSO4_ss (I,J,L) = PSO4F
@@ -5161,7 +5290,7 @@
 !
 ! SJS 20190514, add TNVC
 ! SJS 20190604, add CL, NA
-      SUBROUTINE GET_HPLUS( SO4nss, TNVC, TNH3, TNO3, SO2, CL, NA,
+      SUBROUTINE GET_HPLUS( SO4nss,THMSA,TNVC,TNH3,TNO3,SO2,CL,NA,
      &                      T, PRES, LWC,  iHPLUS, HPLUS, IonStr )
 !
 ! !USES:
@@ -5171,6 +5300,7 @@
 ! !INPUT PARAMETERS: 
 !
       REAL(fp),  INTENT(IN)    :: SO4nss ! Total nss sulfate mixing ratio [M]
+      REAL(fp),  INTENT(IN)    :: THMSA  ! Total HMSA mixing ratio [M] SJS
       REAL(fp),  INTENT(IN) :: TNVC!Total nonvolatile cations mixing ratio[M] SJS
       REAL(fp),  INTENT(IN)    :: CL ! HCl mixing ratio [v/v] SJS
       REAL(fp),  INTENT(IN)    :: NA ! Na mixing ratio [M] SJS
@@ -5243,7 +5373,8 @@
       ! D = (2.e+0_fp*SO4nss) 
       ! Add TNVC here, SJS 20190514
       ! Add NA here, SJS 20190604
-      D = (2.e+0_fp*SO4nss) - TNVC - NA
+      ! Add THMSA here, SJS 20190608
+      D = (2.e+0_fp*SO4nss) + THMSA - TNVC - NA
 
       ! Temperature dependent water equilibrium constant
       Kw_T = Kw*exp(DhrKw*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
@@ -5379,7 +5510,7 @@
 !
 ! SJS 20190514, add TNVC
 ! SJS 20190604, add CL, NA
-      SUBROUTINE GET_HPLUS_NEW( SO4nss, TNVC, TNH3, TNO3, SO2,
+      SUBROUTINE GET_HPLUS_NEW( SO4nss,THMSA,TNVC,TNH3,TNO3,SO2,
      &           CL, NA, T, PRES, LWC,  iHPLUS, HPLUS, IonStr )
 !
 ! !USES:
@@ -5389,6 +5520,7 @@
 ! !INPUT PARAMETERS: 
 !
       REAL(fp),  INTENT(IN)    :: SO4nss ! Total nss sulfate mixing ratio [M]
+      REAL(fp),  INTENT(IN)    :: THMSA  ! Total HMSA mixing ratio [M] SJS
       REAL(fp),  INTENT(IN) :: TNVC!Total nonvolatile cations mixing ratio[M] SJS
       REAL(fp),  INTENT(IN)    :: CL ! HCl mixing ratio [v/v] SJS
       REAL(fp),  INTENT(IN)    :: NA ! Na mixing ratio [M] SJS
@@ -5458,7 +5590,8 @@
       ! D = (2.e+0_fp*SO4nss) 
       ! Add TNVC here, SJS 20190514
       ! Add NA here, SJS 20190604
-      D = (2.e+0_fp*SO4nss) - TNVC - NA
+      ! Add THMSA here, SJS 20190608
+      D = (2.e+0_fp*SO4nss) + THMSA - TNVC - NA
 
       ! Temperature dependent water equilibrium constant
       Kw_T = Kw*exp(DhrKw*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
@@ -6514,9 +6647,10 @@
 !\\
 ! !INTERFACE:
 !
-      SUBROUTINE AQCHEM_SO2( LWC,     T,     P,       SO2,   H2O2, 
-     &                       O3,      Hplus, Ionstr,  MnII,  FeIII, 
+      SUBROUTINE AQCHEM_SO2( LWC,     T,     P,       SO2, 
+     &                       Hplus, Ionstr,  MnII,  FeIII, 
      &                       KaqH2O2, KaqO3, KaqO3_1, KaqO2,
+     &                       KaqHCHO, KdHMSA, ! SJS 20190607
      &                       HSO3aq,  SO3aq ) 
 !
 ! !INPUT PARAMETERS: 
@@ -6525,18 +6659,20 @@
       REAL(fp), INTENT(IN)  :: T       ! Temperature [K]
       REAL(fp), INTENT(IN)  :: P       ! Dry air partial pressure [atm]
       REAL(fp), INTENT(IN)  :: SO2     ! SO2  mixing ratio [v/v]
-      REAL(fp), INTENT(IN)  :: H2O2    ! H2O2 mixing ratio [v/v]
-      REAL(fp), INTENT(IN)  :: O3      ! O3   mixing ratio [v/v]
-      REAL(fp), INTENT(IN)  :: HPLUS   ! Concentration of H+ ion (i.e. pH) [v/v]
+!      REAL(fp), INTENT(IN)  :: H2O2    ! H2O2 mixing ratio [v/v]
+!      REAL(fp), INTENT(IN)  :: O3      ! O3   mixing ratio [v/v]
+      REAL(fp), INTENT(IN)  :: HPLUS   ! Concentration of H+ ion (i.e. pH) [mole/l]
       REAL(fp), INTENT(IN)  :: Ionstr  ! Ionic strength [mole/l]
       REAL(fp), INTENT(IN)  :: MnII    ! Concentration of MnII [mole/l]
       REAL(fp), INTENT(IN)  :: FeIII   ! Concentration of FeIII [mole/l]
 !
 ! !OUTPUT PARAMETERS: 
 !
-      REAL(fp), INTENT(OUT) :: KaqH2O2 ! Reaction rate for H2O2
-      REAL(fp), INTENT(OUT) :: KaqO3   ! Reaction rate for O3
-      REAL(fp), INTENT(OUT) :: KaqO3_1 ! only the SO3-- oxidation, (qjc, 04/10/16)
+      REAL(fp), INTENT(OUT) :: KaqH2O2 ! Reaction rate for H2O2 [v/v/s]
+      REAL(fp), INTENT(OUT) :: KaqO3   ! Reaction rate for O3 [v/v/s]
+      REAL(fp), INTENT(OUT) :: KaqO3_1 ! only the SO3-- oxidation [v/v/s], (qjc, 04/10/16)
+      REAL(fp), INTENT(OUT) :: KaqHCHO ! Reaction rate for HCHO [v/v/s] (SJS 20190607)
+      REAL(fp), INTENT(OUT) :: KdHMSA  ! Decomposition [/s] (SJS 20190608)
       REAL(fp), INTENT(OUT) :: KaqO2   ! Reaction rate for O2 (metal cat)
       REAL(fp), INTENT(OUT) :: HSO3aq  ! Cloud bisulfite [mol/l] (qjc, 06/10/16)
       REAL(fp), INTENT(OUT) :: SO3aq   ! Cloud sulfite   [mol/l] (qjc, 06/10/16)
@@ -6595,14 +6731,18 @@
 ! !DEFINED PARAMETERS:
 !
       REAL(fp), PARAMETER   :: R = 0.08205e+0_fp 
+      ! Water dissociation constants
+      REAL(fp),  PARAMETER   :: Kw   = 1.0e-14_fp
+      REAL(fp),  PARAMETER   :: DhrKw = -6710.e+0_fp
 !
 ! !LOCAL VARIABLES:
 !
-      REAL(fp)              :: KH2O2,  RA,     KS1, KS2,    HCSO2
-      REAL(fp)              :: FHCSO2, XSO2G,  SIV, HSO3,   XSO2AQ
+      REAL(fp)              :: KH2O2,  KS1, KS2,    HCSO2
+      REAL(fp)              :: FHCSO2, XSO2G,  SIV, XSO2AQ
       REAL(fp)              :: XHSO3,  XSO3,   KH1, HCH2O2, FHCH2O2
-      REAL(fp)              :: XH2O2G, H2O2aq, KO0, KO1,    KO2
-      REAL(fp)              :: HCO3,   XO3g,   O3aq
+      REAL(fp)              :: XH2O2G, KO0, KO1,    KO2
+      REAL(fp)              :: KHCHO1, KHCHO2, HCHCHO, FHCHCHO ! SJS 20190607
+      REAL(fp)              :: HCO3,   XO3g, XHCHOg, Kw_T ! SJS 20190607
 
       !=================================================================
       ! AQCHEM_SO2 begins here!
@@ -6691,7 +6831,8 @@
 !      H2O2aq  = FHCH2O2 * XH2O2g * H2O2 * P
 
       ! Conversion rate from SO2 to SO4 via reaction with H2O2
-      KaqH2O2  = kh2o2 * Ks1 * FHCH2O2 * HCSO2 * XH2O2g * XSO2g
+      ! Should use intrinsic Henry constant, SJS 20190610
+      KaqH2O2  = kh2o2 * Ks1 * HCH2O2 * HCSO2 * XH2O2g * XSO2g
      &         * P * LWC * R * T            ! [v/v/s]
 
       !=================================================================
@@ -6719,7 +6860,7 @@
       KO2 = 7.32e+14_fp * EXP( -4.03e+3_fp / T )
 
       !=================================================================
-      ! H2O2 equilibrium reaction
+      ! O3 equilibrium reaction
       ! O3 + H2O = O3.H2O
       !  HCO3  = 1.13E-2 * EXP( 8.51 * (298.15/T -1.) ), S & P
       !  HCO3  = 1.13E-2 * EXP( 7.72 * (298.15/T -1.) ), Jacobson
@@ -6739,6 +6880,47 @@
       !(qjc, 04/10/16)
       KaqO3_1 = KO2*XSO3 * FHCSO2 * XSO2g
      &      * P * HCO3 * XO3g * LWC * R * T   ! [v/v/s]
+
+      !=================================================================
+      !  Aqueous reactions of SO2 with HCHO, SJS 20190607
+      !  HSO3-   + HCHO => HMSA       (1)
+      !  SO3--   + HCHO => HMSA       (2)
+      !=================================================================
+      KHCHO1 = 3.2e+2_fp *
+     &         EXP(-2.7e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+
+      KHCHO2 = 3.8e+6_fp *
+     &         EXP(-2.5e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+
+      !=================================================================
+      ! HCHO equilibrium reaction, SJS 20190608
+      !=================================================================
+
+      ! Intrinsic Henry's constant for HCHO
+      HCHCHO = 2.5e+0_fp *
+     &         EXP(3.3e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+
+      ! Effective Henry's constant for HCHO (and CH2(OH)2)
+      FHCHCHO = 3.2e+3_fp *
+     &          EXP(7.1e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+
+      XHCHOg  = 1.e+0_fp / ( 1.e+0_fp + ( FHCHCHO * R * T * LWC ) )
+
+      ! Conversion rate from SO2 to HMSA
+      KaqHCHO = (KHCHO1*XHSO3 + KHCHO2*XSO3) * FHCSO2 * XSO2g
+     &          * P * HCHCHO * XHCHOg * LWC * R * T   ! [v/v/s]
+
+      !=================================================================
+      ! HMSA decomposition reaction, SJS 20190608
+      !=================================================================
+
+      ! Temperature dependent water equilibrium constant
+      Kw_T = Kw*exp(DhrKw*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+
+      KdHMSA = 6.2e-8_fp * 
+     &         exp(-1.1e+4_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))+
+     &         4.8e+3_fp * (Kw_T / Hplus) * 
+     &         exp(-4.7e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
 
       ! ===================================================================
       ! Metal (Fe, Mn) catalyzed O2 oxidation (bec, 7/12/04)
@@ -6777,7 +6959,9 @@
      &           LWC * R * T   ! [s-1]
 
       ! Adjust according to ionic strength, SJS
-      KaqO2 = KaqO2 * ( 1.e+1_fp ** (-2.e+0_fp*(Ionstr**0.5e+0_fp)) )
+      ! SJS-OPTION
+      ! Parameter from -2 to -4
+      KaqO2 = KaqO2 * ( 1.e+1_fp ** (-2.e+0_fp*(IonStr**0.5e+0_fp)) )
        
       ENDIF
 
@@ -7121,7 +7305,7 @@
       REAL(fp)          :: SO4P1, SO4P10, SO4P2, SO4P20 !SJS 
       REAL(fp)          :: SO4P3, SO4P30, SO4P4, SO4P40 
       REAL(fp)          :: SO4P5, SO4P50, SO4P6, SO4P60 
-      REAL(fp)          :: SO4P7, SO4P70 
+      REAL(fp)          :: SO4P7, SO4P70, HMSA, HMSA_0
       REAL(fp)          :: PSO4d, SO40_dust ! tdf 04/07/08
 
       ! Arrays
@@ -7160,7 +7344,7 @@
 !$OMP+PRIVATE( SO4P1, SO4P10, SO4P2, SO4P20 ) !SJS
 !$OMP+PRIVATE( SO4P3, SO4P30, SO4P4, SO4P40 )
 !$OMP+PRIVATE( SO4P5, SO4P50, SO4P6, SO4P60 )
-!$OMP+PRIVATE( SO4P7, SO4P70 )
+!$OMP+PRIVATE( SO4P7, SO4P70, HMSA, HMSA_0 )
 !$OMP+SCHEDULE( DYNAMIC ) 
       DO L = 1, LLPAR
       DO J = 1, JJPAR
@@ -7171,6 +7355,13 @@
 
          ! Initialize for safety's sake
          SO4  = 0e+0_fp
+         SO4P1  = 0e+0_fp !SJS
+         SO4P2  = 0e+0_fp
+         SO4P3  = 0e+0_fp
+         SO4P4  = 0e+0_fp
+         SO4P5  = 0e+0_fp
+         SO4P6  = 0e+0_fp
+         SO4P7  = 0e+0_fp
          SO4s = 0e+0_fp
          SO4d = 0e+0_fp  ! tdf 04/07/08
 
@@ -7187,6 +7378,7 @@
          SO4P50  = Spc(I,J,L,id_SO4P5)
          SO4P60  = Spc(I,J,L,id_SO4P6)
          SO4P70  = Spc(I,J,L,id_SO4P7)
+         HMSA_0  = Spc(I,J,L,id_HMSA) !SJS
          
          ! SO4 within coarse seasalt aerosol [v/v]
          SO40s = Spc(I,J,L,id_SO4s)
@@ -7212,6 +7404,7 @@
          SO4P5 = SO4P50 + PSO4P5_SO2(I,J,L)
          SO4P6 = SO4P60 + PSO4P6_SO2(I,J,L)
          SO4P7 = SO4P70 + PSO4P7_SO2(I,J,L)
+         HMSA  = HMSA_0 + PHMSA_SO2(I,J,L) !SJS
 
          !==============================================================
          ! SO4s (SO4 w/in seasalt aerosol) chemistry: 
@@ -7260,6 +7453,7 @@
          IF ( SO4P5  < SMALLNUM ) SO4P5  = 0e+0_fp
          IF ( SO4P6  < SMALLNUM ) SO4P6  = 0e+0_fp
          IF ( SO4P7  < SMALLNUM ) SO4P7  = 0e+0_fp
+         IF ( HMSA  < SMALLNUM ) HMSA  = 0e+0_fp !SJS
          IF ( SO4s < SMALLNUM ) SO4s = 0e+0_fp
 
          ! Final concentrations [v/v]
@@ -7271,6 +7465,7 @@
          Spc(I,J,L,id_SO4P5)  = SO4P5
          Spc(I,J,L,id_SO4P6)  = SO4P6
          Spc(I,J,L,id_SO4P7)  = SO4P7
+         Spc(I,J,L,id_HMSA)  = HMSA
          Spc(I,J,L,id_SO4s) = SO4s
 
          !tdf
@@ -8841,6 +9036,11 @@
       IF ( RC /= GC_SUCCESS ) RETURN
       PSO4P7_SO2 = 0e+0_fp
  
+      ALLOCATE( PHMSA_SO2( IIPAR, JJPAR, LLCHEM ), STAT=RC )
+      CALL GC_CheckVar( 'sulfate_mod.F:PHMSA_SO2', 0, RC )
+      IF ( RC /= GC_SUCCESS ) RETURN
+      PHMSA_SO2 = 0e+0_fp
+
       ALLOCATE( PSO4_ss( IIPAR, JJPAR, LLCHEM ), STAT=RC )
       CALL GC_CheckVar( 'sulfate_mod.F:PSO4_ss', 0, RC )
       IF ( RC /= GC_SUCCESS ) RETURN
@@ -8961,6 +9161,8 @@
       id_SO4P5 = Ind_('SO4P5'    )
       id_SO4P6 = Ind_('SO4P6'    )
       id_SO4P7 = Ind_('SO4P7'    )
+      id_HMSA  = Ind_('HMSA'     ) !SJS
+      id_HCHO  = Ind_('CH2O'     ) !SJS
 !      id_SO4aq = Ind_('SO4aq'    ) SJS
       id_SO4d1 = Ind_('SO4D1'    )
       id_SO4d2 = Ind_('SO4D2'    )
@@ -9047,6 +9249,7 @@
       IF ( ALLOCATED( PSO4P5_SO2 ) ) DEALLOCATE( PSO4P5_SO2 )
       IF ( ALLOCATED( PSO4P6_SO2 ) ) DEALLOCATE( PSO4P6_SO2 )
       IF ( ALLOCATED( PSO4P7_SO2 ) ) DEALLOCATE( PSO4P7_SO2 )
+      IF ( ALLOCATED( PHMSA_SO2 ) )  DEALLOCATE( PHMSA_SO2  ) !SJS
 #if   defined( TOMAS )
       IF ( ALLOCATED( PSO4_SO2AQ ) ) DEALLOCATE( PSO4_SO2AQ ) 
       IF ( ALLOCATED( SO4_ANTH   ))  DEALLOCATE( SO4_ANTH   )

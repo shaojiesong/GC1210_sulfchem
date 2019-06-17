@@ -464,11 +464,13 @@
 !%%%         IF ( id_SALA > 0 ) THEN
             
             ! Total Na+ (30.61% by weight of seasalt) [mole/m3]
-            TNA = Spc(I,J,L,id_SALA) * 0.3061e+0_fp * 1.e+3_fp /
+            ! Consider other ions equivalence, SJS 20190614
+            TNA = Spc(I,J,L,id_SALA) * 0.3963e+0_fp * 1.e+3_fp /
      &        ( 22.99e+0_fp  * VOL  )
 
             ! Total Cl- (55.04% by weight of seasalt) [mole/m3]
-            TCL = Spc(I,J,L,id_SALA) * 0.5504e+0_fp * 1.e+3_fp /
+            ! Consider other ions equivalence, SJS 20190614
+            TCL = Spc(I,J,L,id_SALA) * 0.6085e+0_fp * 1.e+3_fp /
      &           ( 35.45e+0_fp  * VOL  )
 
 !==============================================================================
