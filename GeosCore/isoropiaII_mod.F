@@ -491,8 +491,9 @@
 !===     &                                 ( 24.312e+0_fp * VOL  )
 
             ! Set Ca, K, Mg to zero for time being (hotp, bmy, 2/1/10)
+            ! Does not consider K+, SJS 20190620
 !            TCA      = 0e+0_fp
-!            TK       = 0e+0_fp
+            TK       = 0e+0_fp
 !            TMG      = 0e+0_fp
 !
             ! Set Ca, K, Mg to non-zero, SJS 20190510
@@ -502,8 +503,8 @@
 
             ! Total K+ (scaled w/ a 1.4 molar factor tot Fe) [mole/m3]
 !            IF ( id_pFe > 0 ) THEN
-               TK=(Spc(I,J,L,id_pFe) + Spc(I,J,L,id_DST1)*35e-3_fp) *
-     &            1.4 * 1.d3 / ( 55.85e+0_fp * VOL )
+!               TK=(Spc(I,J,L,id_pFe) + Spc(I,J,L,id_DST1)*35e-3_fp) *
+!     &            1.4 * 1.d3 / ( 55.85e+0_fp * VOL )
 !            ELSE
 !               TK=(Spc(I,J,L,id_DST1)*35e-3_fp) *
 !     &            1.4 * 1.d3 / ( 55.85e+0_fp * VOL )

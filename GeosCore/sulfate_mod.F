@@ -3200,11 +3200,12 @@
 
             ! Get total nonvolatile cations and convert to [moles/liter]
             ! Use a cloud scavenging ratio of 0.7 
-            ! A TNVC : DUST molar ratio of 0.08 
-            ! SJS, 20190514
+            ! A TNVC : DUST molar ratio of 0.08, SJS 20190514
+            ! A TNVC : DUST molar ratio of 0.055, SJS 20190620
+            ! Does not consider K+, SJS 20190620
             TNVC = ( Spc(I,J,L,id_DST1) + Spc(I,J,L,id_DST2) +
      &               Spc(I,J,L,id_DST3) + Spc(I,J,L,id_DST4) ) *
-     &             State_Met%AIRDEN(I,J,L) * 0.08e+0_fp *
+     &             State_Met%AIRDEN(I,J,L) * 0.055e+0_fp *
      &             0.7e+0_fp / ( AIRMW * LWC ) 
 
             ! SJS, 20190604
@@ -3971,7 +3972,7 @@
          PSO4P4_SO2(I,J,L) = L4S
          PSO4P5_SO2(I,J,L) = L5S + SRhobr
          PSO4P6_SO2(I,J,L) = PSO4E
-         PSO4P7_SO2(I,J,L) = SR
+         PSO4P7_SO2(I,J,L) = SRhcho !SJS 20190619
 
          ! Add L6S and L7S, SJS 20190609
          PHMSA_SO2(I,J,L) = L6S + SRhcho - L7S*FC
@@ -5486,8 +5487,9 @@
       kCO2p2 = kCO22 ( PRES, T, LWC, HPLUS ) 
       kSO2p2 = kSO22 ( PRES, T, LWC, HPLUS, SO2 )
 
+      ! Does not consider K+, SJS 20190620
       IonStr = HPLUS * ( 1.e+0_fp + kNH3p ) + SO4nss + 
-     &         TNVC * 1.36e+0_fp + NA + 
+     &         TNVC * 1.53e+0_fp + NA + 
      &        ( kCO2p2 + kSO2p2 )/HPLUS/HPLUS/2.e+0_fp
 
       IF ( IonStr .LT. 0.0e+0_fp ) IonStr = 0.0e+0_fp
@@ -5682,8 +5684,9 @@
       kCO2p2 = kCO22 ( PRES, T, LWC, HPLUS ) 
       kSO2p2 = kSO22 ( PRES, T, LWC, HPLUS, SO2 )
 
+      ! Does not consider K+, SJS 20190620
       IonStr = HPLUS * ( 1.e+0_fp + kNH3p ) + SO4nss + 
-     &         TNVC * 1.36e+0_fp + NA + 
+     &         TNVC * 1.53e+0_fp + NA + 
      &        ( kCO2p2 + kSO2p2 )/HPLUS/HPLUS/2.e+0_fp
 
       IF ( IonStr .LT. 0.0e+0_fp ) IonStr = 0.0e+0_fp
