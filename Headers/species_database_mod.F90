@@ -1666,8 +1666,8 @@ CONTAINS
              Henry_CR      = 8700.0_f8
 #else
              DD_Hstar_old  = 1.0e+14_fp
-             Henry_K0      = 8.3e+4_f8
-             Henry_CR      = 7400.0_f8
+             Henry_K0      = 2.1e+5_f8 !SJS 20190624
+             Henry_CR      = 8700.0_f8 !SJS 20190624
 #endif
                               WD_AerScavEff = 1.0_fp
                               WD_KcScaleFac = KcScale
