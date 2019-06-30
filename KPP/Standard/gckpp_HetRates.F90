@@ -674,7 +674,7 @@ MODULE GCKPP_HETRATES
       ! Calculate genuine first-order uptake reactions first
       HET(ind_HO2,    1) = HetHO2(        MW_HO2,    2E-1_fp)
       HET(ind_NO2,    1) = HetNO2(        MW_NO2,    1E-4_fp)
-      HET(ind_NO3,    1) = HetNO3(        MW_NO3,    1E-1_fp)
+      HET(ind_NO3,    1) = HetNO3(        MW_NO3,    1E-3_fp) !GanLuo
       HET(ind_GLYX,   1) = HetGLYX(       MW_GLYX,   1E-1_fp)
       HET(ind_MGLY,   1) = HetMGLY(       MW_MGLY,   1E-1_fp)
       HET(ind_IEPOXA, 1) = HetIEPOX(      MW_IEPOXA, 1E-1_fp)

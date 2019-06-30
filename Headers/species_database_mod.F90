@@ -1650,7 +1650,8 @@ CONTAINS
 
              ! Allow rainout of HNO3 when T < 258K, becasue HNO3
              ! is considered to be IN.
-             RainEff       = (/ 1.0_fp, 1.0_fp, 1.0_fp /)
+!GanLuo, no remove in mixing cloud RainEff = (/ 1.0_fp, 1.0_fp, 1.0_fp /)
+             RainEff       = (/ 1.0_fp, 0.0_fp, 1.0_fp /)
 
              FullName      = 'Nitric acid'
              Formula       = 'HNO3'
