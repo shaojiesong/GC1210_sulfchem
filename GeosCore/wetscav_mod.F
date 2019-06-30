@@ -25,6 +25,9 @@
       ! Save H2O2 and SO2 [v/v] for sulfate chemistry
       REAL(fp), PUBLIC, ALLOCATABLE, TARGET :: H2O2s(:,:,:)
       REAL(fp), PUBLIC, ALLOCATABLE, TARGET :: SO2s(:,:,:)
+!GanLuo, added for wet deposition update
+      REAL(fp), PUBLIC, ALLOCATABLE, TARGET :: PSO4s(:,:,:)
+      REAL(fp), PUBLIC, ALLOCATABLE, TARGET :: QQ3D(:,:,:)
 !
 ! !PUBLIC MEMBER FUNCTIONS:
 !
@@ -36,11 +39,13 @@
       PUBLIC  :: WASHOUT
       PUBLIC  :: LS_K_RAIN
       PUBLIC  :: LS_F_PRIME
+!GanLuo, used in convective cloud
+      PUBLIC  :: CONV_F_PRIME
 !
 ! !PRIVATE MEMBER FUNCTIONS:
 !
       PRIVATE :: COMPUTE_L2G
-      PRIVATE :: CONV_F_PRIME
+!GanLuo      PRIVATE :: CONV_F_PRIME
       PRIVATE :: E_ICE
       PRIVATE :: RAINOUT
       PRIVATE :: GET_RAINFRAC
@@ -184,7 +189,7 @@
 
       ! Use condensed water content (L+W) =1.0e-6 cm3/cm3 (= 1.0e-3 kg/m3).
       ! which was recommended by Qiaoqiao Wang et al (2014).
-      REAL(fp), PARAMETER           :: COND_WATER_CONTENT = 1.0e-6_fp
+      !GanLuo, replaced by MERRA2 REAL(fp), PARAMETER           :: COND_WATER_CONTENT = 1.0e-6_fp
 !
 ! !LOCAL VARIABLES:
 !
@@ -556,6 +561,9 @@
          ! [cm3 H2O/cm3 air/s]
          QQ(L,I,J)     = ( State_Met%DQRLSAN(I,J,L)                 )
      &                 * ( State_Met%MAIRDEN(I,J,L)     / 1000.0_fp )
+
+!GanLuo
+         QQ3D(L,I,J)   = QQ(L,I,J)
 
          ! Rate of re-evaporation in grid box (I,J,L)
          ! [cm3 H2O/cm3 air/s]
@@ -1452,6 +1460,8 @@
             ! Apply temperature-dependent rainout efficiencies
             ! This accounts for impaction scavenging of certain aerosols
             CALL APPLY_RAINOUT_EFF( p_T, SpcInfo, RAINFRAC )
+!GanLuo
+            RAINFRAC     = 0.0_fp
 
             ! Limit RAINFRAC 
             SO2LOSS      = MIN( SO2s(I,J,L), H2O2s(I,J,L) )
@@ -1883,7 +1893,8 @@
          ! NOTE: Even though SO2 is not an aerosol we treat it as SO4 in
          ! wet scavenging.  When evaporation occurs, it returns to SO4.
          KIN      = .TRUE.
-         WASHFRAC = WASHFRAC_FINE_AEROSOL( DT, F, PP, TK )
+!GanLuo         WASHFRAC = WASHFRAC_FINE_AEROSOL( DT, F, PP, TK )
+         WASHFRAC = 0.D0
 
          ! Use the wet-scavenging following [Chin et al, 1996] such 
          ! that a soluble fraction of SO2 is limited by the availability 
@@ -2077,6 +2088,8 @@
       ! Washout rate constant for aerosols: aP^b (p: mm h^-1)
       ! K_WASH for aerosols in accumulation mode (qq,10/11/2011)
       REAL(fp), PARAMETER :: K_WASH = 1.06e-3_fp
+!GanLuo
+      REAL(fp)            :: RATE
 
       !=================================================================
       ! WASHFRAC_FINE_AEROSOL begins here!
@@ -2087,8 +2100,15 @@
          ! T >= 268K (or POPS simulation)  
          !---------------------------------
          IF ( F > 0e+0_fp ) THEN
-            WASHFRAC = F *(1e+0_fp - EXP( -K_WASH * 
-     &              (PP / F*3.6e+4_fp )**0.61e+0_fp * DT / 3.6e+3_fp ))
+!GanLuo            WASHFRAC = F *(1e+0_fp - EXP( -K_WASH *
+!GanLuo     &              (PP / F*3.6e+4_fp )**0.61e+0_fp * DT / 3.6e+3_fp ))
+            RATE = 10.D0**(274.35758D0+
+     &             332839.59273D0*(log10(0.5D-6))**-4.D0+
+     &             226656.57259D0*(log10(0.5D-6))**-3.D0+
+     &             58005.91340D0*(log10(0.5D-6))**-2.D0+
+     &             6588.38582D0*(log10(0.5D-6))**-1.D0+
+     &             0.244984D0*SQRT(MIN(20.D0,(PP*36000.D0/F))))
+            WASHFRAC = F * (1e+0_fp - EXP(-RATE * DT))
          ELSE
             WASHFRAC = 0e+0_fp
          ENDIF
@@ -2366,6 +2386,8 @@
 !
       REAL(fp), PARAMETER :: K_WASH = 1.0_fp  ! First order washout rate
                                               ! constant [cm^-1].
+!GanLuo
+      REAL(fp)            :: RATE
 
       !=================================================================
       ! WASHFRAC_HNO3 begins here!
@@ -2376,7 +2398,9 @@
          ! T >= 268K: Do washout
          !------------------------
          IF ( F > 0e+0_fp ) THEN
-            WASHFRAC = F * (1e+0_fp - EXP(-K_WASH * (PP / F) * DT))
+!GanLuo            WASHFRAC = F * (1e+0_fp - EXP(-K_WASH * (PP / F) * DT))
+            RATE = 2.D0*((PP/F)**0.62)
+            WASHFRAC = F * (1e+0_fp - EXP( - RATE * DT ))
          ELSE
             WASHFRAC = 0e+0_fp
          ENDIF
@@ -2715,6 +2739,7 @@
       REAL(fp)               :: F_RAINOUT,     F_WASHOUT 
       REAL(fp)               :: DEP_HG
       REAL(fp)               :: CNVSCL
+      REAL(fp)               :: COND_WATER_CONTENT !GanLuo
       CHARACTER(LEN=63)      :: OrigUnit
 
       ! Arrays
@@ -2800,6 +2825,7 @@
 !$OMP+PRIVATE( F_RAINOUT,   F_WASHOUT,  K_RAIN,      Q          )       
 !$OMP+PRIVATE( QDOWN,       IS_RAINOUT, IS_WASHOUT,  N          ) 
 !$OMP+PRIVATE( DEP_HG,      SpcInfo,    Hg_Cat,      EC         )
+!$OMP+PRIVATE( COND_WATER_CONTENT )
 !$OMP+SCHEDULE( DYNAMIC )   
       DO J = 1, JJPAR
       DO I = 1, IIPAR
@@ -2847,11 +2873,18 @@
 
             ! Q is the new precip that is forming within grid box (I,J,L)
             Q = QQ(L,I,J)
+!GanLuo
+            COND_WATER_CONTENT = MAX(1.D-30,(QQ(L,I,J)*DT+
+     &      State_Met%QL(I,J,L)*State_Met%AIRDEN(I,J,L)*1e-3_fp))
 
             ! Compute K_RAIN and F_RAINOUT for large-scale 
             ! precipitation (cf. Eqs. 11-13, Jacob et al, 2000) 
-            K_RAIN  = LS_K_RAIN( Q )
-            F_RAINOUT = LS_F_PRIME( Q, K_RAIN )
+            !GanLuoK_RAIN  = LS_K_RAIN( Q )
+            !GanLuoF_RAINOUT = LS_F_PRIME( Q, K_RAIN )
+            K_RAIN = LS_K_RAIN( QQ(L,I,J), COND_WATER_CONTENT )
+            F_RAINOUT = MAX(1.D-4,State_Met%CLDF(I,J,L))
+            F_RAINOUT = F_RAINOUT*MIN(1.D0,QQ(L,I,J)/
+     &                 (COND_WATER_CONTENT*K_RAIN))
             
             ! Set F = F_RAINOUT, since there is no FTOP at L = LLPAR
             F = F_RAINOUT
@@ -2899,7 +2932,8 @@
          ! (4)  R a i n o u t   a n d   W a s h o u t 
          !      i n   t h e   M i d d l e   L e v e l s
          !==============================================================
-         DO L = LLPAR-1, 2, -1
+!GanLuo         DO L = LLPAR-1, 2, -1
+         DO L = LLPAR-1, 1, -1
 
             ! Zero variables for each level
             F           = 0e+0_fp
@@ -2917,9 +2951,17 @@
                ! precipitation (cf. Eqs. 11-13, Jacob et al, 2000) 
                ! F_RAINOUT is the fraction of grid box (I,J,L) 
                ! experiencing rainout.
-               K_RAIN  = LS_K_RAIN( QQ(L,I,J) )
-               F_PRIME = LS_F_PRIME( QQ(L,I,J), K_RAIN )
-               
+               !GanLuoK_RAIN  = LS_K_RAIN( QQ(L,I,J) )
+               !GanLuoF_PRIME = LS_F_PRIME( QQ(L,I,J), K_RAIN )
+               COND_WATER_CONTENT = MAX(1.D-30,(QQ(L,I,J)*DT+
+     &         State_Met%QL(I,J,L)*State_Met%AIRDEN(I,J,L)*1e-3_fp))
+
+               ! Compute K_RAIN and F_PRIME for large-scale
+               ! precipitation (cf. Eqs. 11-13, Jacob et al, 2000)
+               K_RAIN = LS_K_RAIN( QQ(L,I,J), COND_WATER_CONTENT )
+               F_PRIME = MAX(1.D-4,State_Met%CLDF(I,J,L))
+               F_PRIME = F_PRIME*MIN(1.D0,QQ(L,I,J)/
+     &                  (K_RAIN*COND_WATER_CONTENT))
             ELSE
                
                F_PRIME = 0e+0_fp
@@ -3033,7 +3075,8 @@
 
             ENDIF  
 
-            IF ( IS_WASHOUT ) THEN 
+!GanLuo, to avoid double account            IF ( IS_WASHOUT ) THEN 
+            IF ( IS_WASHOUT.AND.L>1 ) THEN
 
                !--------------------------------------------------------
                ! WASHOUT ONLY
@@ -3146,7 +3189,8 @@
 
             ! Since no precipitation is forming within grid box (I,J,L),
             ! F' = 0, and F = MAX( F', FTOP ) reduces to F = FTOP.
-            F = FTOP
+            !GanLuo, only washout F = FTOP
+            F = F_WASHOUT
 
             ! Only compute washout if F > 0.
             IF ( F > 0e+0_fp ) THEN
@@ -3270,12 +3314,15 @@
 !\\
 ! !INTERFACE:
 !
-      FUNCTION LS_K_RAIN( Q ) RESULT( K_RAIN )
+!GanLuo      FUNCTION LS_K_RAIN( Q ) RESULT( K_RAIN )
+      FUNCTION LS_K_RAIN( Q, COND_WATER_CONTENT ) RESULT( K_RAIN )
 !
 ! !INPUT PARAMETERS: 
 !
       REAL(fp), INTENT(IN) :: Q        ! Rate of precipitation formation 
                                        !  [cm3 H2O/cm3 air/s]
+!GanLuo
+      REAL(fp), INTENT(IN) :: COND_WATER_CONTENT
 !
 ! !RETURN VALUE:
 !
@@ -3317,13 +3364,17 @@
 !\\
 ! !INTERFACE:
 !
-      FUNCTION LS_F_PRIME( Q, K_RAIN ) RESULT( F_PRIME )
+!GanLuo      FUNCTION LS_F_PRIME( Q, K_RAIN ) RESULT( F_PRIME )
+      FUNCTION LS_F_PRIME( Q, K_RAIN,
+     &                     COND_WATER_CONTENT ) RESULT( F_PRIME )
 !
 ! !INPUT PARAMETERS: 
 !
       REAL(fp), INTENT(IN) :: Q        ! Rate of precipitation formation 
                                        !  [cm3 H2O/cm3 air/s]
       REAL(fp), INTENT(IN) :: K_RAIN   ! 1st order rainout rate constant [1/s]
+!GanLuo
+      REAL(fp), INTENT(IN) :: COND_WATER_CONTENT
 !
 ! !REMARKS:
 ! 
@@ -3614,6 +3665,14 @@
              ENDIF
           ENDIF
 #endif
+!GanLuo
+         IF(N==id_SO4)THEN
+         IF(Spc(I,J,L,N)>1.D-30)THEN
+           RAINFRAC = RAINFRAC*
+     &    (1.D0-0.5D0*MIN(Spc(I,J,L,N),PSO4s(I,J,L))/Spc(I,J,L,N))
+         ENDIF
+         ENDIF
+
          ! WETLOSS is the amount of species in grid box per unit area
          ! (I,J,L) that is lost to rainout [kg/m2]
          WETLOSS = Spc(I,J,L,N) * RAINFRAC
@@ -5317,6 +5376,17 @@
       IF ( RC /= GC_SUCCESS ) RETURN
       SO2s = 0.0_fp
 
+!GanLuo
+      ALLOCATE( PSO4s( IIPAR, JJPAR, LLPAR ), STAT=RC )
+      CALL GC_CheckVar( 'wetscav_mod.F:PSO4s', 0, RC )
+      IF ( RC /= GC_SUCCESS ) RETURN
+      PSO4s = 0.0_fp
+
+      ALLOCATE( QQ3D( LLPAR, IIPAR, JJPAR ), STAT=RC )
+      CALL GC_CheckVar( 'wetscav_mod.F:QQ3D', 0, RC )
+      IF ( RC /= GC_SUCCESS ) RETURN
+      QQ3D = 0.0_fp
+
       !-----------------------------------------------------------------
       ! Only allocate arrays if wetdep or convection is turned on
       !-----------------------------------------------------------------
@@ -5567,23 +5637,47 @@
             !    CLDLIQ = 0                       [     T <= 248 K    ]
             !
             !--------------------------------------------------------------
+!GanLuo            IF ( TK >= 268.0_fp ) THEN
+!GanLuo               CLDLIQ(I,J,L) = 1e-6_fp
+!GanLuo         
+!GanLuo            ELSE IF ( TK > 248.0_fp .and. TK < 268.0_fp ) THEN
+!GanLuo               CLDLIQ(I,J,L) = 1e-6_fp * ((TK - 248.0_fp) / 20.0_fp )
+!GanLuo         
+!GanLuo            ELSE
+!GanLuo               CLDLIQ(I,J,L) = 0.0_fp
+!GanLuo               
+!GanLuo            ENDIF
             IF ( TK >= 268.0_fp ) THEN
-               CLDLIQ(I,J,L) = 1e-6_fp
+               !LuoCLDLIQ(I,J,L) = 1e-6_fp
+               CLDLIQ(I,J,L) = (State_Met%QL(I,J,L)+
+     &                          State_Met%QI(I,J,L))*
+     &                          State_Met%AIRDEN(I,J,L) * 1e-3_fp
          
             ELSE IF ( TK > 248.0_fp .and. TK < 268.0_fp ) THEN
-               CLDLIQ(I,J,L) = 1e-6_fp * ((TK - 248.0_fp) / 20.0_fp )
+               CLDLIQ(I,J,L) = (State_Met%QL(I,J,L)+
+     &                          State_Met%QI(I,J,L))*
+     &                          State_Met%AIRDEN(I,J,L) * 1e-3_fp
+     &                       * ((TK - 248.0_fp) / 20.0_fp )
          
             ELSE
                CLDLIQ(I,J,L) = 0.0_fp
                
             ENDIF
+
+            CLDLIQ(I,J,L) = MAX(CLDLIQ(I,J,L),0.0_fp)
               
             !--------------------------------------------------------------
             ! CLDICE, the cloud ice content [cm3 ice/cm3 air] is given by:
             !
             !    CLDICE = 1.0e-6 - CLDLIQ
             !--------------------------------------------------------------
-            CLDICE(I,J,L) = 1e-6_fp - CLDLIQ(I,J,L)
+!GanLuo            CLDICE(I,J,L) = 1e-6_fp - CLDLIQ(I,J,L)
+            CLDICE(I,J,L) = (State_Met%QL(I,J,L)+
+     &                       State_Met%QI(I,J,L))*
+     &                       State_Met%AIRDEN(I,J,L) * 1e-3_fp
+     &                     - CLDLIQ(I,J,L)
+         
+            CLDICE(I,J,L) = MAX(CLDICE(I,J,L),0.0_fp)
          
             !--------------------------------------------------------------
             ! C_H2O is given by Dalton's Law as:
@@ -5720,6 +5814,15 @@
 
       IF ( ALLOCATED( SO2s   ) ) DEALLOCATE( SO2s,   STAT=RC )
       CALL GC_CheckVar( 'wetscav_mod.F:SO2s', 2, RC )
+      IF ( RC /= GC_SUCCESS ) RETURN
+
+!GanLuo
+      IF ( ALLOCATED( PSO4s   ) ) DEALLOCATE( PSO4s,   STAT=RC )
+      CALL GC_CheckVar( 'wetscav_mod.F:PSO4s', 2, RC )
+      IF ( RC /= GC_SUCCESS ) RETURN
+
+      IF ( ALLOCATED( QQ3D  ) ) DEALLOCATE( QQ3D,  STAT=RC )
+      CALL GC_CheckVar( 'wetscav_mod.F:QQ3D', 2, RC )
       IF ( RC /= GC_SUCCESS ) RETURN
 
       IF ( ALLOCATED( REEVAP ) ) DEALLOCATE( REEVAP, STAT=RC )
