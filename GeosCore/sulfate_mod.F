@@ -2741,6 +2741,7 @@
       REAL(fp), POINTER     :: Spc(:,:,:,:)
       REAL(fp), POINTER     :: pHCloud(:,:,:)
       REAL(fp), POINTER     :: ISCloud(:,:,:) ! SJS
+      REAL(fp), POINTER     :: HSCloud(:,:,:) ! SJS 20190701
       REAL(fp), POINTER     :: SSAlk(:,:,:,:)
       REAL(fp), POINTER     :: H2O2s(:,:,:)
       REAL(fp), POINTER     :: SO2s(:,:,:)
@@ -2771,6 +2772,7 @@
       Spc         => State_Chm%Species
       pHCloud     => State_Chm%pHCloud
       ISCloud     => State_Chm%ISCloud ! SJS
+      HSCloud     => State_Chm%HSCloud ! SJS 20190701
       SSAlk       => State_Chm%SSAlk
       H2O2s       => State_Chm%H2O2AfterChem
       SO2s        => State_Chm%SO2AfterChem
@@ -2778,6 +2780,7 @@
       ! Reset cloud pH for safety
       pHCloud(:,:,:) = 4.5e+0_fp
       ISCloud(:,:,:) = 0.0e+0_fp ! SJS
+      HSCloud(:,:,:) = 0.0e+0_fp ! SJS 20190701
 
       ! DTCHEM is the chemistry timestep in seconds
       DTCHEM   = GET_TS_CHEM()
@@ -3274,6 +3277,7 @@
             ! Store the cloud pH
             pHCloud(I,J,L) = -1.0e+0_fp * log10(HPLUS)
             ISCloud(I,J,L) = IonStr ! SJS
+            HSCloud(I,J,L) = 1.0e+0_fp ! SJS 20190701
 
             ! SJS 20190102
             ! IF ( Input_Opt%LMETALCATSO2 ) THEN
@@ -4224,6 +4228,7 @@
       Spc     => NULL()
       pHCloud => NULL()
       ISCloud => NULL() ! SJS
+      HSCloud => NULL() ! SJS 20190701
       SSAlk   => NULL()
       H2O2s   => NULL()
       SO2s    => NULL()
