@@ -28,6 +28,8 @@
 !GanLuo, added for wet deposition update
       REAL(fp), PUBLIC, ALLOCATABLE, TARGET :: PSO4s(:,:,:)
       REAL(fp), PUBLIC, ALLOCATABLE, TARGET :: QQ3D(:,:,:)
+!SJS 20190630
+      REAL(fp), PUBLIC, ALLOCATABLE, TARGET :: PHMSAs(:,:,:)
 !
 ! !PUBLIC MEMBER FUNCTIONS:
 !
@@ -228,6 +230,7 @@
       INTEGER                       :: id_SO2
       INTEGER                       :: id_SO4
       INTEGER                       :: id_SO4P2 !SJS
+      INTEGER                       :: id_HMSA  !SJS
 
       CONTAINS
 !EOC
@@ -3748,6 +3751,14 @@
          ENDIF
          ENDIF
 
+!SJS 20190630
+         IF(N==id_HMSA)THEN
+         IF(Spc(I,J,L,N)>1.D-30)THEN
+           RAINFRAC = RAINFRAC*
+     &    (1.D0-0.5D0*MIN(Spc(I,J,L,N),PHMSAs(I,J,L))/Spc(I,J,L,N))
+         ENDIF
+         ENDIF
+
          ! WETLOSS is the amount of species in grid box per unit area
          ! (I,J,L) that is lost to rainout [kg/m2]
          WETLOSS = Spc(I,J,L,N) * RAINFRAC
@@ -5465,6 +5476,7 @@
       id_SO2   = Ind_('SO2'  )
       id_SO4   = Ind_('SO4'  )
       id_SO4P2 = Ind_('SO4P2') !SJS
+      id_HMSA  = Ind_('HMSA' ) !SJS
       id_H2O2  = Ind_('H2O2' )
 
 !      ! Test if the wetdep diagnostics in State_Diag are activated
@@ -5497,6 +5509,12 @@
       CALL GC_CheckVar( 'wetscav_mod.F:QQ3D', 0, RC )
       IF ( RC /= GC_SUCCESS ) RETURN
       QQ3D = 0.0_fp
+
+!SJS 20190630
+      ALLOCATE( PHMSAs( IIPAR, JJPAR, LLPAR ), STAT=RC )
+      CALL GC_CheckVar( 'wetscav_mod.F:PHMSAs', 0, RC )
+      IF ( RC /= GC_SUCCESS ) RETURN
+      PHMSAs = 0.0_fp
 
       !-----------------------------------------------------------------
       ! Only allocate arrays if wetdep or convection is turned on
@@ -5935,6 +5953,11 @@
 
       IF ( ALLOCATED( QQ3D  ) ) DEALLOCATE( QQ3D,  STAT=RC )
       CALL GC_CheckVar( 'wetscav_mod.F:QQ3D', 2, RC )
+      IF ( RC /= GC_SUCCESS ) RETURN
+
+!SJS 20190630
+      IF ( ALLOCATED( PHMSAs   ) ) DEALLOCATE( PHMSAs,   STAT=RC )
+      CALL GC_CheckVar( 'wetscav_mod.F:PHMSAs', 2, RC )
       IF ( RC /= GC_SUCCESS ) RETURN
 
       IF ( ALLOCATED( REEVAP ) ) DEALLOCATE( REEVAP, STAT=RC )

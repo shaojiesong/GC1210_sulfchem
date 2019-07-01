@@ -2552,7 +2552,7 @@
       USE TIME_MOD,           ONLY : GET_TS_CHEM, GET_MONTH
       USE TIME_MOD,           ONLY : ITS_A_NEW_MONTH
 !GanLuo
-      USE WETSCAV_MOD,        ONLY : QQ3D, PSO4s
+      USE WETSCAV_MOD,        ONLY : QQ3D, PSO4s, PHMSAs !SJS 20190630
       USE HCO_INTERFACE_MOD,  ONLY : GetHcoDiagn
 #if defined( BPCH_DIAG ) 
       USE CMN_DIAG_MOD
@@ -3990,10 +3990,15 @@
          PSO4_ss (I,J,L) = PSO4F
 
 !GanLuo
-         PSO4s(I,J,L)   = ( L2S + L3S + L4S + L5S + PSO4E + PSO4F + 
+         PSO4s(I,J,L)   = ( L2S + L3S + L4S + L5S + PSO4E + 
      &                    SRo3 + SRhobr ) *
      &                    State_Met%AD(I,J,L) / ( AIRMW /
      &                    State_Chm%SpcData(id_SO4)%Info%emMW_g )
+
+!SJS 20190630
+         PHMSAs(I,J,L)  = ( L6S + SRhcho - L7S*FC ) *
+     &                    State_Met%AD(I,J,L) / ( AIRMW /
+     &                    State_Chm%SpcData(id_HMSA)%Info%emMW_g )
 
 #if   defined( TOMAS )
          PSO4_SO2AQ(I,J,L) = L2S + L3S + SR ! For TOMAS microphysics
