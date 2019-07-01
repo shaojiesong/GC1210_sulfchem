@@ -3626,7 +3626,7 @@
             ! SJS 20190610
             ! Set L6S to be zero if other one-way processes are fast
             ! SJS-OPTION
-            IF (-1 > 0) THEN
+            IF (1 > 0) THEN
                LSTOT0 = L2S + L3S + L4S + L5S
                IF (LSTOT0 > SO2_ss) THEN
                   L6S = 0.e+0_fp
@@ -6979,7 +6979,7 @@
       ! Adjust according to ionic strength, SJS
       ! SJS-OPTION
       ! Parameter from -2 to -4
-      KaqO2 = KaqO2 * ( 1.e+1_fp ** (-2.e+0_fp*(IonStr**0.5e+0_fp)) )
+      KaqO2 = KaqO2 * ( 1.e+1_fp ** (-3.e+0_fp*(IonStr**0.5e+0_fp)) )
        
       ENDIF
 
