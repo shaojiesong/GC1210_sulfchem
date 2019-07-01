@@ -1536,8 +1536,9 @@
             ! Apply temperature-dependent rainout efficiencies
             ! This accounts for impaction scavenging of certain aerosols
             CALL APPLY_RAINOUT_EFF( p_T, SpcInfo, RAINFRAC )
+! Do not set RAINFRAC to 0.0, SJS 20190701
 !GanLuo
-            RAINFRAC     = 0.0_fp
+!            RAINFRAC     = 0.0_fp
 
             ! Limit RAINFRAC 
             SO2LOSS      = MIN( SO2s(I,J,L), H2O2s(I,J,L) )
@@ -1971,8 +1972,10 @@
          ! NOTE: Even though SO2 is not an aerosol we treat it as SO4 in
          ! wet scavenging.  When evaporation occurs, it returns to SO4.
          KIN      = .TRUE.
+! Do not set WASHFRAC to 0.0, SJS 20190701
+         WASHFRAC = WASHFRAC_FINE_AEROSOL( DT, F, PP, TK )
 !GanLuo         WASHFRAC = WASHFRAC_FINE_AEROSOL( DT, F, PP, TK )
-         WASHFRAC = 0.D0
+!         WASHFRAC = 0.D0
 
          ! Use the wet-scavenging following [Chin et al, 1996] such 
          ! that a soluble fraction of SO2 is limited by the availability 
