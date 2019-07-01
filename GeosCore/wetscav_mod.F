@@ -3753,7 +3753,7 @@
 
 !SJS 20190630
          IF(N==id_HMSA)THEN
-         IF(Spc(I,J,L,N)>1.D-30)THEN
+         IF(Spc(I,J,L,N)>1.D-30 .and. PHMSAs(I,J,L)>1.D-30)THEN
            RAINFRAC = RAINFRAC*
      &    (1.D0-0.5D0*MIN(Spc(I,J,L,N),PHMSAs(I,J,L))/Spc(I,J,L,N))
          ENDIF

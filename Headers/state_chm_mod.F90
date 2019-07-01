@@ -2495,6 +2495,7 @@ CONTAINS
        CASE ( 'KPPHVALUE' )
           IF ( isDesc  ) Desc  = 'H-value for Rosenbrock solver'
           IF ( isUnits ) Units = '1'
+          IF ( isRank  ) Rank  = 3
 
        CASE ( 'AEROH2OMDUST1' )
           IF ( isDesc  ) Desc  = 'Aerosol H2O content for mineral dust (0.15 um)'
