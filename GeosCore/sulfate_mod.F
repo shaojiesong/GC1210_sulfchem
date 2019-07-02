@@ -6914,11 +6914,26 @@
       !  HSO3-   + HCHO => HMSA       (1)
       !  SO3--   + HCHO => HMSA       (2)
       !=================================================================
-      KHCHO1 = 3.2e+2_fp *
-     &         EXP(-2.7e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
 
-      KHCHO2 = 3.8e+6_fp *
-     &         EXP(-2.5e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+      ! SJS-OPTION
+      ! 20190701, option to use Lagrange data
+      IF ( 1 > 0 ) THEN
+
+         KHCHO1 = 3.2e+2_fp *
+     &        EXP(-2.7e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+
+         KHCHO2 = 3.8e+6_fp *
+     &        EXP(-2.5e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+
+      ELSE
+
+         KHCHO1 = 3.6e+2_fp *
+     &        EXP(-2.7e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+
+         KHCHO2 = 1.0e+3_fp *
+     &        EXP(-2.5e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+
+      ENDIF
 
       !=================================================================
       ! HCHO equilibrium reaction, SJS 20190608
