@@ -432,6 +432,7 @@
 !
       ! Scalars
       INTEGER            :: I,   J,   L,   D,   N, NDVZ
+      INTEGER       :: NHNO3 !SJS
       REAL(f8)           :: DVZ, THIK
       CHARACTER(LEN=255) :: ErrMsg,  ThisLoc
 
@@ -532,6 +533,8 @@
             ! as passed back from subroutine DEPVEL
             NDVZ    =  NDVZIND(D)
 
+            IF (N .EQ. id_HNO3) NHNO3 = NDVZ !SJS
+
             ! Dry deposition velocity [cm/s]
             DVZ     =  DVEL(I,J,NDVZ) * 100.e+0_f8
 
@@ -553,6 +556,11 @@
                ! Scale species to ISOPN
                DVZ = DVZ * sqrt(State_Chm%SpcData(id_ISOPND)%Info%MW_g)
      &                   / sqrt(SpcInfo%MW_g)            
+
+            ELSE IF ( FLAG(D) .eq. 4 ) THEN !SJS
+
+               ! Scale species to HNO3
+               DVZ = DVEL(I,J,NHNO3) * 100.e+0_f8
 
             ENDIF
 
@@ -4344,6 +4352,14 @@
                   XMW(NUMDEP)  = State_Chm%SpcData(id_ISOPND)%Info%MW_g
      &                           * 1e-3_fp
                   FLAG(NUMDEP) = 3
+
+               CASE( 'NIT' ) !SJS
+                  ! Test with scaling NIT to the Vd of HNO3. Since NIT
+                  ! is aerosol instead of gas, we have to assign the Vd
+                  ! of HNO3 from the DVEL array
+                  ! The scaling is applied in DO_DRYDEP using FLAG=4.
+                  !
+                  FLAG(NUMDEP) = 4
 
                CASE( 'SO4s', 'SO4S' )
                   ! DEPNAME for SO4s has to be in all caps, for 
