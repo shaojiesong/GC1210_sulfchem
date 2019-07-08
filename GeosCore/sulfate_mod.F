@@ -301,8 +301,9 @@
       INTEGER                :: id_SO4d4,  id_SO4s,   id_pFe
       INTEGER                :: id_HOBr,   id_SO4H1,  id_SO4H2
       INTEGER                :: id_SO4P1,  id_SO4P2,  id_SO4P3 !SJS
-      INTEGER                :: id_SO4P4,  id_SO4P5,  id_SO4P6 
-      INTEGER                :: id_SO4P7 
+      INTEGER                :: id_SO4P4,  id_SO4P5,  id_SO4P6 !SJS 
+      INTEGER                :: id_SO4P7,  id_HCOOH,  id_ACTA !SJS 
+      INTEGER                :: id_HONO !SJS 
 
       ! Species drydep ID flags
       INTEGER                :: DRYSO4s,   DRYNITs,   DRYSO4d1 
@@ -2698,6 +2699,7 @@
       REAL(fp)              :: Kt1,    Kt2,     AREASS1, AREASS2
       REAL(fp)              :: PSO4E,  PSO4F,   Kt1N,    Kt2N
       REAL(fp)              :: XX, IonStr,  TNVC, TNA, TCL, THMSA ! SJS
+      REAL(fp)              :: TFAA, TAAA, TMSA, TNO2 ! SJS
       REAL(fp)              :: SRhcho, L6, L6S, L7S, f_sro3 ! SJS
       REAL(fp)              :: HPLUS, SO4nss, TNH3, TNO3, GNO3, ANIT
       REAL(fp)              :: LSTOT,  ALKdst, ALKss,  ALKds, NH3
@@ -2834,6 +2836,7 @@
 !$OMP+PRIVATE( KdHMSA, L6, L6S, L7S, HCHO0, HCHO1, HMSA0, HMSA1        ) !SJS
 !$OMP+PRIVATE( Kt1, Kt2, AREASS1, AREASS2, SO2_ss, Kt1N, Kt2N          )
 !$OMP+PRIVATE( PSO4E, PSO4F, XX, IonStr, TNVC, TNA, TCL, THMSA         ) !SJS
+!$OMP+PRIVATE( TFAA, TAAA, TMSA, TNO2                                  ) !SJS
 !$OMP+PRIVATE( HPLUS, SO4nss, TNH3, TNO3,  GNO3, ANIT,   LSTOT, ALKdst )
 !$OMP+PRIVATE( ALKds, ALKss,  NH3,  SSCvv, aSO4, SO2_sr, SR,    TANIT  )
 !$OMP+PRIVATE( BULK,  SIZE_RES,     RC, AlkA, AlkC                     )
@@ -3210,6 +3213,13 @@
             THMSA  =  Spc(I,J,L,id_HMSA) * State_Met%AIRDEN(I,J,L) *
      &                 0.7e+0_fp / ( AIRMW * LWC )
 
+            ! Get MSA concentration and convert from [v/v] to
+            ! [moles/liter]
+            ! Use a cloud scavenging ratio of 0.7
+            ! SJS 20190705
+            TMSA  =  Spc(I,J,L,id_MSA) * State_Met%AIRDEN(I,J,L) *
+     &                 0.7e+0_fp / ( AIRMW * LWC )
+
             ! Get total nonvolatile cations and convert to [moles/liter]
             ! Use a cloud scavenging ratio of 0.7 
             ! A TNVC : DUST molar ratio of 0.08, SJS 20190514
@@ -3239,6 +3249,15 @@
             ! Use a cloud scavenging ratio of 0.7 for NH4+
             TNH3     = ( Spc(I,J,L,id_NH4) * 0.7e+0_fp ) + 
      &                   Spc(I,J,L,id_NH3)
+
+            ! Get total FAA concentration [v/v]
+            TFAA = Spc(I,J,L,id_HCOOH)
+
+            ! Get total AAA concentration [v/v]
+            TAAA = Spc(I,J,L,id_ACTA)
+
+            ! Get total HNO2 concentration [v/v]
+            TNO2 = Spc(I,J,L,id_HONO)
 
             ! Get total nitrate (HNO3 + NIT) concentrations [v/v] 
             ! Use a cloud scavenging ratio of 0.7 for NIT
@@ -3271,6 +3290,7 @@
      &          TCL, TNA, TK, PATM, LWC, HPLUS_45, HPLUS, IonStr )
         ELSE
            CALL GET_HPLUS_NEW( SO4nss,THMSA,TNVC,TNH3,TNO3,SO2_ss,
+     &          TFAA, TAAA, TMSA, TNO2,
      &          TCL, TNA, TK, PATM, LWC, HPLUS_45, HPLUS, IonStr )
         ENDIF
 
@@ -5538,6 +5558,7 @@
 ! SJS 20190514, add TNVC
 ! SJS 20190604, add CL, NA
       SUBROUTINE GET_HPLUS_NEW( SO4nss,THMSA,TNVC,TNH3,TNO3,SO2,
+     &           FAA, AAA, TMSA, TNO2,
      &           CL, NA, T, PRES, LWC,  iHPLUS, HPLUS, IonStr )
 !
 ! !USES:
@@ -5548,13 +5569,17 @@
 !
       REAL(fp),  INTENT(IN)    :: SO4nss ! Total nss sulfate mixing ratio [M]
       REAL(fp),  INTENT(IN)    :: THMSA  ! Total HMSA mixing ratio [M] SJS
+      REAL(fp),  INTENT(IN)    :: TMSA   ! Total MSA mixing ratio [M] SJS
       REAL(fp),  INTENT(IN) :: TNVC!Total nonvolatile cations mixing ratio[M] SJS
       REAL(fp),  INTENT(IN)    :: CL ! HCl mixing ratio [v/v] SJS
       REAL(fp),  INTENT(IN)    :: NA ! Na mixing ratio [M] SJS
       REAL(fp),  INTENT(IN)    :: TNO3   ! Total nitrate (gas+particulate) mixing
                                        ! ratio [v/v]
+      REAL(fp),  INTENT(IN)    :: TNO2   ! SJS
       REAL(fp),  INTENT(IN)    :: TNH3   ! NH3 mixing ratio [v/v]
       REAL(fp),  INTENT(IN)    :: SO2    ! SO2 mixing ratio [v/v] 
+      REAL(fp),  INTENT(IN)    :: FAA    ! FAA mixing ratio [v/v] SJS
+      REAL(fp),  INTENT(IN)    :: AAA    ! AAA mixing ratio [v/v] SJS
       REAL(fp),  INTENT(IN)    :: T      ! Temperature [K]
       REAL(fp),  INTENT(IN)    :: PRES   ! Dry air partial ressure [atm]
       REAL(fp),  INTENT(IN)    :: LWC    ! Cloud liquid water content [m3/m3]
@@ -5601,6 +5626,8 @@
       REAL(fp)               :: kCO2p, kCO2p2, dCO3p
       REAL(fp)               :: kSO2p, kSO2p2, dSO3p, dCLp
       REAL(fp)               :: kHNO3p, kNH3p, kHClp, dNO3p, dNH4p
+      REAL(fp)               :: kHNO2p, dNO2p
+      REAL(fp)               :: kFAAp, kAAAp, dFAAp, dAAAp
       REAL(fp)               :: fnHPLUS, dnHPLUS
       INTEGER                :: count
       REAL(fp)               :: E, F, G, H, Y
@@ -5618,7 +5645,7 @@
       ! Add TNVC here, SJS 20190514
       ! Add NA here, SJS 20190604
       ! Add THMSA here, SJS 20190608
-      D = (2.e+0_fp*SO4nss) + THMSA - TNVC - NA
+      D = (2.e+0_fp*SO4nss) + THMSA + TMSA - TNVC - NA
 
       ! Temperature dependent water equilibrium constant
       Kw_T = Kw*exp(DhrKw*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
@@ -5644,10 +5671,14 @@
         kSO2p  = kSO21 ( PRES, T, LWC, nHPLUS, SO2 )
         kSO2p2 = kSO22 ( PRES, T, LWC, nHPLUS, SO2 )
         kHNO3p = kHNO3 ( PRES, T, LWC, nHPLUS, TNO3 )
+        kHNO2p = kHNO2 ( PRES, T, LWC, nHPLUS, TNO2 )
         kNH3p  = kNH3  ( PRES, T, LWC, nHPLUS, TNH3, Kw_T )
         kHClp  = kHCl  ( PRES, T, LWC, nHPLUS, CL  ) 
+        kFAAp  = kFAA  ( PRES, T, LWC, nHPLUS, FAA  ) 
+        kAAAp  = kAAA  ( PRES, T, LWC, nHPLUS, AAA  ) 
 
-        E = KHClp + Kw_T + KCO2p + KSO2p + KHNO3p !This would be used if HCl is included
+        !This would be used if HCl is included
+        E = KHClp+KFAAp+KAAAp+Kw_T+KCO2p+KSO2p+KHNO3p+KHNO2p
         !E =        Kw_T + KCO2p + KSO2p + KHNO3p 
         F = KCO2p2 + KSO2p2
         G = KNH3p
@@ -5659,12 +5690,15 @@
 
         dNH4p = dNH4 ( PRES, T, LWC, nHPLUS, TNH3, Kw_T )
         dNO3p = dNO3 ( PRES, T, LWC, nHPLUS, TNO3 )
-        dCLp =   dCL ( PRES, T, LWC, nHPLUS, CL )
+        dNO2p = dNO2 ( PRES, T, LWC, nHPLUS, TNO2 )
+        dCLp  =  dCL ( PRES, T, LWC, nHPLUS, CL )
+        dFAAp = dFAA ( PRES, T, LWC, nHPLUS, FAA )
+        dAAAp = dAAA ( PRES, T, LWC, nHPLUS, AAA )
         dCO3p = dCO3 ( PRES, T, LWC, nHPLUS )
         dSO3p = dSO3 ( PRES, T, LWC, nHPLUS, SO2 )
 
         dnHPLUS = 1.e+0_fp + dNH4p + Kw_T/nHPLUS/nHPLUS - dCO3p -
-     &            dSO3p - dNO3p - dCLp
+     &            dSO3p - dNO3p - dNO2p - dCLp - dFAAp - dAAAp
 
         Y = nHPLUS - fnHPLUS / dnHPLUS
 
@@ -6296,6 +6330,125 @@
 !------------------------------------------------------------------------------
 !BOP
 !
+! !IROUTINE: kHNO2
+!
+! !DESCRIPTION: Function kHNO2
+!\\
+!\\
+! !INTERFACE:
+!
+      FUNCTION kHNO2 ( P, T, LWC, HPLUS, HNO2 ) RESULT ( KHNO2p )
+!
+! !INPUT PARAMETERS: 
+!
+      REAL(fp),  INTENT(IN) :: T, P, LWC, HPLUS, HNO2
+!
+! !OUTPUT PARAMETERS: 
+!
+      REAL(fp)              :: KHNO2p
+!
+! !REVISION HISTORY:
+!  25 Jan 2012 - M. Payer    - Added ProTeX headers
+!  28 Apr 2015 - E. Lundgren - Input pressure is now dry air partial pressure
+!EOP
+!------------------------------------------------------------------------------
+!BOC
+!
+! !DEFINED PARAMETERS:
+!
+      ! HNO2 dissociation constants
+      REAL(fp),  PARAMETER  :: Kn1 = 5.e-4_fp
+      REAL(fp),  PARAMETER  :: Hhno2 = 4.8e+1_fp
+      REAL(fp),  PARAMETER  :: Dhhno2 = 4.8e+3_fp
+      REAL(fp),  PARAMETER  :: DhrKn1 = -1.3e+3_fp
+!
+! !LOCAL VARIABLES:
+!
+      REAL(fp)              :: Hhno2_T, Kn1_T
+      REAL(fp)              :: Hhno2eff, xHNO2, pHNO2
+
+      !=================================================================
+      ! kHNO2 begins here!
+      !=================================================================
+
+      ! HNO2 dissolution constants
+      Hhno2_T = Hhno2*exp(Dhhno2*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+      Kn1_T = Kn1*exp(DhrKn1*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+
+      ! HNO2 dissolution
+      Hhno2eff = Hhno2_T*(1.0e+0_fp+(Kn1_T/HPLUS))
+      xHNO2 = 1.e+0_fp / ( 1.e+0_fp 
+     &      + ( Hhno2eff * 0.08205e+0_fp * T * LWC ) )
+      pHNO2 = HNO2 * P * xHNO2
+
+      kHNO2p = Hhno2_T * Kn1_T * pHNO2
+
+      END FUNCTION kHNO2
+!EOC
+!------------------------------------------------------------------------------
+!                  GEOS-Chem Global Chemical Transport Model                  !
+!------------------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: dNO2
+!
+! !DESCRIPTION: Function dNO2
+!\\
+!\\
+! !INTERFACE:
+!
+      FUNCTION dNO2 ( P, T, LWC, HPLUS, HNO2 ) RESULT ( dNO2p )
+!
+! !INPUT PARAMETERS: 
+!
+      REAL(fp),  INTENT(IN) :: T, P, LWC, HPLUS, HNO2
+!
+! !OUTPUT PARAMETERS: 
+!
+      REAL(fp)              :: dNO2p !SJS 20190528
+!
+! !REVISION HISTORY:
+!  25 Jan 2012 - M. Payer    - Added ProTeX headers
+!  28 Apr 2015 - E. Lundgren - Input pressure is now dry air partial pressure
+!EOP
+!------------------------------------------------------------------------------
+!BOC
+!
+! !DEFINED PARAMETERS:
+!
+      ! HNO2 dissociation constants
+      REAL(fp),  PARAMETER  :: Kn1 = 5.e-4_fp
+      REAL(fp),  PARAMETER  :: Hhno2 = 4.8e+1_fp
+      REAL(fp),  PARAMETER  :: Dhhno2 = 4.8e+3_fp
+      REAL(fp),  PARAMETER  :: DhrKn1 = -1.3e+3_fp
+!
+! !LOCAL VARIABLES:
+!
+      REAL(fp)              :: Hhno2_T, Kn1_T
+      REAL(fp)              :: C1, C2
+
+      !=================================================================
+      ! dNO2 begins here!
+      !=================================================================
+
+      ! HNO2 dissolution constants
+      Hhno2_T = Hhno2*exp(Dhhno2*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+      Kn1_T = Kn1*exp(DhrKn1*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+
+      ! HNO2 dissolution
+      C1 = Hhno2_T * Kn1_T * HNO2 * P
+      C2 = Hhno2_T * 0.08205e+0_fp * T * LWC
+
+      dNO2p = -1.e+0_fp * C1 * (1.e+0_fp+C2) * 
+     &         (( (1.e+0_fp+C2)*HPLUS + Kn1_T*C2 )**(-2.e+0_fp))
+
+      END FUNCTION dNO2
+!EOC
+!------------------------------------------------------------------------------
+!                  GEOS-Chem Global Chemical Transport Model                  !
+!------------------------------------------------------------------------------
+!BOP
+!
 ! !IROUTINE: kHCl
 !
 ! !DESCRIPTION: Function kHCl
@@ -6414,6 +6567,262 @@
      &         (( (1.e+0_fp+C2)*HPLUS + Kcl_T*C2 )**(-2.e+0_fp))
 
       END FUNCTION dCL
+!EOC
+!------------------------------------------------------------------------------
+!                  GEOS-Chem Global Chemical Transport Model                  !
+!------------------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: kFAA
+!
+! !DESCRIPTION: Function kFAA
+!\\
+!\\
+! !INTERFACE:
+!
+      FUNCTION kFAA ( P, T, LWC, HPLUS, FAA ) RESULT ( KFAAp )
+!
+! !INPUT PARAMETERS: 
+!
+      REAL(fp),  INTENT(IN) :: T, P, LWC, HPLUS, FAA
+!
+! !OUTPUT PARAMETERS: 
+!
+      REAL(fp)              :: KFAAp
+!
+! !REVISION HISTORY:
+!  25 Jan 2012 - M. Payer    - Added ProTeX headers
+!  28 Apr 2015 - E. Lundgren - Input pressure is now dry air partial pressure
+!  17 Oct 2017 - M. Sulprizio- Dhck value is from Table 7.3 of Seinfeld and
+!                              Pandis (2006, pp 289) and should be positive for
+!                              consistency with the way it is used here. Also,
+!                              the value of R, in units of kcal mol-1 K-1, is
+!                              1.986x10^-3, not 0.04. (Qianjie Chen)
+!EOP
+!------------------------------------------------------------------------------
+!BOC
+!
+! !DEFINED PARAMETERS:
+!
+      ! FAA dissociation constants
+      REAL(fp),  PARAMETER  :: KFA = 1.8e-4_fp
+      REAL(fp),  PARAMETER  :: HFAA = 8.8e+3_fp
+      REAL(fp),  PARAMETER  :: DhFAA = 6.1e+3_fp
+      REAL(fp),  PARAMETER  :: DhrKFAA = -2.e+1_fp
+!
+! !LOCAL VARIABLES:
+!
+      REAL(fp)              :: HFAA_T, KFAA_T
+      REAL(fp)              :: HFAAeff, xFAA, pFAA
+
+      !=================================================================
+      ! kFAA begins here!
+      !=================================================================
+
+      ! FAA dissolution constants
+      HFAA_T = 
+     &       HFAA*exp(DhFAA*((1.0e+0_fp/T)-(1.0e+0_fp/298.0e+0_fp)))
+      KFAA_T = 
+     &       KFA*exp(DhrKFAA*((1.0e+0_fp/T)-(1.0e+0_fp/298.0e+0_fp)))
+
+      ! FAA dissolution
+      HFAAeff = HFAA_T*(1.0e+0_fp+(KFAA_T/HPLUS))
+      xFAA = 1.0e+0_fp / ( 1.0e+0_fp 
+     &       + ( HFAAeff * 0.08205e+0_fp * T * LWC ) )
+      pFAA = FAA * P * xFAA
+
+      kFAAp = HFAA_T * KFAA_T * pFAA
+
+      END FUNCTION kFAA
+!EOC
+!------------------------------------------------------------------------------
+!                  GEOS-Chem Global Chemical Transport Model                  !
+!------------------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: dFAA
+!
+! !DESCRIPTION: Function dFAA
+!\\
+!\\
+! !INTERFACE:
+!
+      FUNCTION dFAA ( P, T, LWC, HPLUS, FAA ) RESULT ( dFAAp )
+!
+! !INPUT PARAMETERS: 
+!
+      REAL(fp),  INTENT(IN) :: T, P, LWC, HPLUS, FAA
+!
+! !OUTPUT PARAMETERS: 
+!
+      REAL(fp)              :: dFAAp !SJS 20190604
+!
+! !REVISION HISTORY:
+!  25 Jan 2012 - M. Payer    - Added ProTeX headers
+!  28 Apr 2015 - E. Lundgren - Input pressure is now dry air partial pressure
+!EOP
+!------------------------------------------------------------------------------
+!BOC
+!
+! !DEFINED PARAMETERS:
+!
+      ! FAA dissociation constants
+      REAL(fp),  PARAMETER  :: KFA = 1.8e-4_fp
+      REAL(fp),  PARAMETER  :: HFAA = 8.8e+3_fp
+      REAL(fp),  PARAMETER  :: DhFAA = 6.1e+3_fp
+      REAL(fp),  PARAMETER  :: DhrKFAA = -2.e+1_fp
+!
+! !LOCAL VARIABLES:
+!
+      REAL(fp)              :: HFAA_T, KFAA_T
+      REAL(fp)              :: C1, C2
+
+      !=================================================================
+      ! dFAA begins here!
+      !=================================================================
+
+      ! FAA dissolution constants
+      HFAA_T =
+     &       HFAA*exp(DhFAA*((1.0e+0_fp/T)-(1.0e+0_fp/298.0e+0_fp)))
+      KFAA_T =
+     &       KFA*exp(DhrKFAA*((1.0e+0_fp/T)-(1.0e+0_fp/298.0e+0_fp)))
+
+      ! FAA dissolution
+      C1 = HFAA_T * KFAA_T * FAA * P
+      C2 = HFAA_T * 0.08205e+0_fp * T * LWC
+
+      dFAAp = -1.e+0_fp * FAA * (1.e+0_fp+C2) * 
+     &       (( (1.e+0_fp+C2)*HPLUS + KFAA_T*C2 )**(-2.e+0_fp))
+
+      END FUNCTION dFAA
+!EOC
+!------------------------------------------------------------------------------
+!                  GEOS-Chem Global Chemical Transport Model                  !
+!------------------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: kAAA
+!
+! !DESCRIPTION: Function kAAA
+!\\
+!\\
+! !INTERFACE:
+!
+      FUNCTION kAAA ( P, T, LWC, HPLUS, AAA ) RESULT ( KAAAp )
+!
+! !INPUT PARAMETERS: 
+!
+      REAL(fp),  INTENT(IN) :: T, P, LWC, HPLUS, AAA
+!
+! !OUTPUT PARAMETERS: 
+!
+      REAL(fp)              :: KAAAp
+!
+! !REVISION HISTORY:
+!  25 Jan 2012 - M. Payer    - Added ProTeX headers
+!  28 Apr 2015 - E. Lundgren - Input pressure is now dry air partial pressure
+!  17 Oct 2017 - M. Sulprizio- Dhck value is from Table 7.3 of Seinfeld and
+!                              Pandis (2006, pp 289) and should be positive for
+!                              consistency with the way it is used here. Also,
+!                              the value of R, in units of kcal mol-1 K-1, is
+!                              1.986x10^-3, not 0.04. (Qianjie Chen)
+!EOP
+!------------------------------------------------------------------------------
+!BOC
+!
+! !DEFINED PARAMETERS:
+!
+      ! AAA dissociation constants
+      REAL(fp),  PARAMETER  :: KAA = 1.7e-5_fp
+      REAL(fp),  PARAMETER  :: HAAA = 4.0e+3_fp
+      REAL(fp),  PARAMETER  :: DhAAA = 6.2e+3_fp
+      REAL(fp),  PARAMETER  :: DhrKAAA = -1.4e+1_fp
+!
+! !LOCAL VARIABLES:
+!
+      REAL(fp)              :: HAAA_T, KAAA_T
+      REAL(fp)              :: HAAAeff, xAAA, pAAA
+
+      !=================================================================
+      ! kAAA begins here!
+      !=================================================================
+
+      ! AAA dissolution constants
+      HAAA_T = 
+     &       HAAA*exp(DhAAA*((1.0e+0_fp/T)-(1.0e+0_fp/298.0e+0_fp)))
+      KAAA_T = 
+     &       KAA*exp(DhrKAAA*((1.0e+0_fp/T)-(1.0e+0_fp/298.0e+0_fp)))
+
+      ! AAA dissolution
+      HAAAeff = HAAA_T*(1.0e+0_fp+(KAAA_T/HPLUS))
+      xAAA = 1.0e+0_fp / ( 1.0e+0_fp 
+     &       + ( HAAAeff * 0.08205e+0_fp * T * LWC ) )
+      pAAA = AAA * P * xAAA
+
+      kAAAp = HAAA_T * KAAA_T * pAAA
+
+      END FUNCTION kAAA
+!EOC
+!------------------------------------------------------------------------------
+!                  GEOS-Chem Global Chemical Transport Model                  !
+!------------------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: dAAA
+!
+! !DESCRIPTION: Function dAAA
+!\\
+!\\
+! !INTERFACE:
+!
+      FUNCTION dAAA ( P, T, LWC, HPLUS, AAA ) RESULT ( dAAAp )
+!
+! !INPUT PARAMETERS: 
+!
+      REAL(fp),  INTENT(IN) :: T, P, LWC, HPLUS, AAA
+!
+! !OUTPUT PARAMETERS: 
+!
+      REAL(fp)              :: dAAAp !SJS 20190604
+!
+! !REVISION HISTORY:
+!  25 Jan 2012 - M. Payer    - Added ProTeX headers
+!  28 Apr 2015 - E. Lundgren - Input pressure is now dry air partial pressure
+!EOP
+!------------------------------------------------------------------------------
+!BOC
+!
+! !DEFINED PARAMETERS:
+!
+      ! AAA dissociation constants
+      REAL(fp),  PARAMETER  :: KAA = 1.7e-5_fp
+      REAL(fp),  PARAMETER  :: HAAA = 4.0e+3_fp
+      REAL(fp),  PARAMETER  :: DhAAA = 6.2e+3_fp
+      REAL(fp),  PARAMETER  :: DhrKAAA = -1.4e+1_fp
+!
+! !LOCAL VARIABLES:
+!
+      REAL(fp)              :: HAAA_T, KAAA_T
+      REAL(fp)              :: C1, C2
+
+      !=================================================================
+      ! dAAA begins here!
+      !=================================================================
+
+      ! AAA dissolution constants
+      HAAA_T =
+     &       HAAA*exp(DhAAA*((1.0e+0_fp/T)-(1.0e+0_fp/298.0e+0_fp)))
+      KAAA_T =
+     &       KAA*exp(DhrKAAA*((1.0e+0_fp/T)-(1.0e+0_fp/298.0e+0_fp)))
+
+      ! AAA dissolution
+      C1 = HAAA_T * KAAA_T * AAA * P
+      C2 = HAAA_T * 0.08205e+0_fp * T * LWC
+
+      dAAAp = -1.e+0_fp * AAA * (1.e+0_fp+C2) * 
+     &       (( (1.e+0_fp+C2)*HPLUS + KAAA_T*C2 )**(-2.e+0_fp))
+
+      END FUNCTION dAAA
 !EOC
 !------------------------------------------------------------------------------
 !                  GEOS-Chem Global Chemical Transport Model                  !
@@ -9207,6 +9616,9 @@
       id_HMSA  = Ind_('HMSA'     ) !SJS
       id_HCHO  = Ind_('CH2O'     ) !SJS
 !      id_SO4aq = Ind_('SO4aq'    ) SJS
+      id_HCOOH = Ind_('HCOOH'    ) !SJS
+      id_ACTA  = Ind_('ACTA'     ) !SJS 
+      id_HONO  = Ind_('HNO2'     ) !SJS
       id_SO4d1 = Ind_('SO4D1'    )
       id_SO4d2 = Ind_('SO4D2'    )
       id_SO4d3 = Ind_('SO4D3'    )
