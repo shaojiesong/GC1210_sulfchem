@@ -216,7 +216,7 @@
       LOGICAL, SAVE            :: FIRST = .TRUE.
       INTEGER, SAVE            :: id_HNO3, id_NH3,  id_NH4
       INTEGER, SAVE            :: id_NIT,  id_SALA, id_SO4
-      INTEGER, SAVE            :: id_DST1, id_pFe !SJS
+      INTEGER, SAVE            :: id_DST1, id_HMSA, id_pFe !SJS
 
       ! Scalars
       INTEGER                  :: I,    J,    L,    N
@@ -297,6 +297,7 @@
          id_SALA = Ind_('SALA')
          id_SO4  = Ind_('SO4' )
          id_DST1 = Ind_('DST1') !SJS
+         id_HMSA = Ind_('HMSA') !SJS
          id_pFe  = Ind_('PFE' )
 
          ! Make sure certain tracers are defined
@@ -329,6 +330,13 @@
          ! SJS 20190510
          IF ( id_DST1 <= 0 ) THEN
             ErrMsg = 'DST1 is an undefined species!'
+            CALL GC_Error( ErrMsg, RC, ThisLoc )
+            RETURN
+         ENDIF
+
+         ! SJS 20190726
+         IF ( id_HMSA <= 0 ) THEN
+            ErrMsg = 'HMSA is an undefined species!'
             CALL GC_Error( ErrMsg, RC, ThisLoc )
             RETURN
          ENDIF
@@ -450,7 +458,9 @@
          !---------------------------------
 
          ! Total SO4 [mole/m3]
-         TSO4 = Spc(I,J,L,id_SO4) * 1.e+3_fp / ( 96.e+0_fp * VOL )
+         ! SJS 20190726
+         TSO4 = Spc(I,J,L,id_SO4) * 1.e+3_fp / ( 96.e+0_fp * VOL ) +
+     &          Spc(I,J,L,id_HMSA)*1.e+3_fp/(111.e+0_fp*VOL)/2.e+0_fp
 
          ! Total NH3 [mole/m3] 
          TNH3 = Spc(I,J,L,id_NH4) * 1.e+3_fp / (18.e+0_fp * VOL ) +
@@ -645,7 +655,8 @@
      &                     SCASI, OTHER                 )
 
             ! Retrieve concentrations in mol/m3
-            TSO4 = WT(2)
+            ! SJS 20190726
+            ! TSO4 = WT(2)
             TNH3 = GAS(1)
             TNH4 = WT(3) - GAS(1)
             GNO3 = GAS(2)
@@ -658,7 +669,8 @@
          ! Save back into tracer array
          !---------------------------------
          ! Convert ISOROPIA output from [mole/m3] to [kg]
-         TSO4 = MAX( 96.e-3_fp * VOL * TSO4, CONMIN )
+         ! SJS 20190726
+         ! TSO4 = MAX( 96.e-3_fp * VOL * TSO4, CONMIN )
          TNH3 = MAX( 17.e-3_fp * VOL * TNH3, CONMIN )
          TNH4 = MAX( 18.e-3_fp * VOL * TNH4, CONMIN )
          TNIT = MAX( 62.e-3_fp * VOL * ANO3, CONMIN )
