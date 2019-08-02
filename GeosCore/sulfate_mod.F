@@ -7655,7 +7655,15 @@
       !=================================================================
       ! NO2 + SO2, SJS 20190708
       !=================================================================
-      kno2 = 3.e+7_fp !M-1 s-1
+
+      ! pH dependent rate constant, from Cheng Yafang et al. 2016
+      IF ( Hplus >= 1.0e-5_fp ) THEN
+         kno2 = 1.4e+5_fp
+      ELSE IF ( Hplus > 1.6e-6_fp .AND. Hplus < 1.0e-5_fp ) THEN
+         kno2 = 8.4e-3_fp * ( Hplus ** -1.444e+0_fp )
+      ELSE IF ( Hplus <= 1.6e-6_fp ) THEN
+         kno2 = 2.0e+6_fp
+      ENDIF
 
       HCNO2 = 1.3e-2_fp *
      &        EXP(2.5e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
