@@ -2526,6 +2526,152 @@
 !------------------------------------------------------------------------------
 !BOP
 !
+! !IROUTINE: hetchem_so2
+!
+! !DESCRIPTION: Subroutine HETCHEM\_SO2 is the het SO2 chemistry subroutine. 
+!  (rjp, bmy, 11/26/02, 8/26/10) 
+!\\
+!\\
+! !INTERFACE:
+!
+      SUBROUTINE HETCHEM_SO2( I,         J,          L,
+     &                        SO2_ss,    PSO4H1,
+     &                        am_I_Root, Input_Opt,  State_Met,
+     &                        State_Chm, State_Diag, FullRun, RC )
+!
+! !USES:
+!
+      USE CMN_SIZE_MOD
+      USE ErrCode_Mod
+      USE ERROR_MOD,          ONLY : IS_SAFE_EXP
+      USE Input_Opt_Mod,      ONLY : OptInput
+      USE State_Chm_Mod,      ONLY : ChmState
+      USE State_Met_Mod,      ONLY : MetState
+      USE State_Diag_Mod,     ONLY : DgnState
+      USE TIME_MOD,           ONLY : GET_TS_CHEM
+!
+! !INPUT PARAMETERS:
+!
+      INTEGER,        INTENT(IN)    :: I, J, L    ! Grid box indices
+      LOGICAL,        INTENT(IN)    :: am_I_Root   ! Is this the root CPU?
+      LOGICAL,        INTENT(IN)    :: FullRun     ! Modify species conc?
+      TYPE(OptInput), INTENT(IN)    :: Input_Opt   ! Input Options object
+      TYPE(MetState), INTENT(IN)    :: State_Met   ! Meteorology State object
+!
+! !INPUT/OUTPUT PARAMETERS: 
+!
+      TYPE(ChmState), INTENT(INOUT) :: State_Chm   ! Chemistry State object
+      TYPE(DgnState), INTENT(INOUT) :: State_Diag  ! Diagnostics State object
+      REAL(fp),       INTENT(INOUT) :: SO2_ss      ! SO2 mixing ratio [v/v] 
+!
+! !OUTPUT PARAMETERS:
+!
+      REAL(fp),       INTENT(OUT)   :: PSO4H1      ! sulfate produced mixing ratio [v/v]
+      INTEGER,        INTENT(OUT)   :: RC          ! Success or failure?
+!
+! !REMARKS:
+!
+!  ============================================================================
+!EOP
+!------------------------------------------------------------------------------
+!BOC
+!
+! !DEFINED PARAMETERS:
+!
+      REAL(fp),  PARAMETER  :: MINDAT    = 1.e-20_fp
+!
+! !LOCAL VARIABLES:
+!
+      ! Scalars
+      INTEGER               :: N
+      REAL(fp)              :: XRH,         CRITRH,      XGAMMA
+      REAL(fp)              :: DTCHEM,      XX,          MW_SO2
+      REAL(fp)              :: XMMS,        DFKG
+      REAL(fp)              :: LH1,         KLH1
+
+      !=================================================================
+      ! begins here!
+      !=================================================================
+
+      ! Assume success
+      RC        =  GC_SUCCESS
+
+      ! [%], critical RH
+      CRITRH = 50.0e+0_fp
+
+      ! Set molecular weights locally
+      MW_SO2 = State_Chm%SpcData(id_SO2)%Info%emMW_g ! [g/mole], Molecular weight 
+
+      ! DTCHEM is the chemistry timestep in seconds
+      DTCHEM = GET_TS_CHEM()
+
+      ! Initialize for safety's sake 
+      KLH1    = 0.0_fp
+      LH1     = 0.0_fp
+      PSO4H1  = 0.0_fp
+      XX      = 0.0_fp
+      XGAMMA  = 0.0_fp
+
+      ! [%], get RH
+      XRH = State_Met%RH(I,J,L)
+
+      ! XGAMMA = Uptake coefficient
+      IF ( XRH > CRITRH ) THEN
+          XGAMMA = 6.e-7_fp * (XRH - CRITRH) + 2.e-5_fp
+      ELSE
+          XGAMMA = 2.e-5_fp
+      ENDIF
+
+      ! XMMS = Mean molecular speed [cm/s]
+      XMMS = SQRT( 2.117e+8_fp * State_Met%T(I,J,L) / MW_SO2 )
+
+      ! DFKG = Gas phase diffusion coeff [cm2/s]
+      ! State_Met%AIRNUMDEN = dry air number density [molec/cm3]
+      DFKG = 9.45e+17_fp / State_Met%AIRNUMDEN(I,J,L) *
+     &       SQRT(State_Met%T(I,J,L)) *
+     &       SQRT(3.472e-2_fp + (1.e+0_fp/MW_SO2))
+
+      ! Loop over aerosols
+      DO N = 1, NAER+NDUST
+      IF ( State_Chm%WetAeroArea(I,J,L,N) > 0.e+0_fp .AND.
+     &     State_Chm%WetAeroRadi(I,J,L,N) > 0.e+0_fp ) THEN
+
+          ! First order rate constant (s-1)
+          ! State_Chm%WetAeroRadi = Wet Aerosol Radius [cm]
+          ! State_Chm%WetAeroArea = [cm^2 wet aerosol sfc area cm^-3 air]
+          KLH1 = State_Chm%WetAeroArea(I,J,L,N) /
+     &           ( State_Chm%WetAeroRadi(I,J,L,N)/DFKG + 
+     &           4.e+0_fp/(XGAMMA*XMMS) )
+
+          ! SO2 loss rate by hetchem [v/v/timestep]
+          XX = -1.e+0_fp * KLH1 * DTCHEM ! Argument of the exponential
+          IF ( IS_SAFE_EXP( XX ) ) THEN
+              LH1 = SO2_ss * (1.e+0_fp - EXP( XX ))
+          ELSE
+              LH1 = SO2_ss
+          ENDIF
+
+          IF ( N .eq. 8 .or. N .eq. 9 .or. N .eq. 10 ) THEN
+              PSO4H1 = PSO4H1 + LH1
+          ENDIF
+
+      ENDIF
+      ENDDO
+
+      ! Save output
+      IF ( PSO4H1 > SO2_ss ) THEN
+          PSO4H1 = SO2_ss
+      ENDIF
+
+      SO2_ss = MAX( SO2_ss-PSO4H1, MINDAT )
+
+      END SUBROUTINE HETCHEM_SO2
+!EOC
+!------------------------------------------------------------------------------
+!                  GEOS-Chem Global Chemical Transport Model                  !
+!------------------------------------------------------------------------------
+!BOP
+!
 ! !IROUTINE: chem_so2
 !
 ! !DESCRIPTION: Subroutine CHEM\_SO2 is the SO2 chemistry subroutine. 
@@ -2701,7 +2847,7 @@
       REAL(fp)              :: Kt1,    Kt2,     AREASS1, AREASS2
       REAL(fp)              :: PSO4E,  PSO4F,   Kt1N,    Kt2N
       REAL(fp)              :: XX, IonStr,  TNVC, TNA, TCL, THMSA ! SJS
-      REAL(fp)              :: TFAA, TAAA, TMSA ! SJS
+      REAL(fp)              :: TFAA, TAAA, TMSA, PSO4H1 ! SJS
       REAL(fp)              :: SRhcho, L6, L6S, L7S, f_sro3 ! SJS
       REAL(fp)              :: HPLUS, SO4nss, TNH3, TNO3, GNO3, ANIT
       REAL(fp)              :: LSTOT,  ALKdst, ALKss,  ALKds, NH3
@@ -2839,7 +2985,7 @@
 !$OMP+PRIVATE( KdHMSA, L6, L6S, L7S, HCHO0, HCHO1, HMSA0, HMSA1        ) !SJS
 !$OMP+PRIVATE( Kt1, Kt2, AREASS1, AREASS2, SO2_ss, Kt1N, Kt2N          )
 !$OMP+PRIVATE( PSO4E, PSO4F, XX, IonStr, TNVC, TNA, TCL, THMSA         ) !SJS
-!$OMP+PRIVATE( TFAA, TAAA, TMSA                                        ) !SJS
+!$OMP+PRIVATE( TFAA, TAAA, TMSA, PSO4H1                                ) !SJS
 !$OMP+PRIVATE( HPLUS, SO4nss, TNH3, TNO3,  GNO3, ANIT,   LSTOT, ALKdst )
 !$OMP+PRIVATE( ALKds, ALKss,  NH3,  SSCvv, aSO4, SO2_sr, SR,    TANIT  )
 !$OMP+PRIVATE( BULK,  SIZE_RES,     RC, AlkA, AlkC                     )
@@ -4038,15 +4184,19 @@
             HCHO0  = MAX( HCHO0 + L7S*FC - L6S - SRhcho, MINDAT )
 
             ! Update SO2 level, save SO2[ppv], H2O2[ppv] for WETDEP
-            SO2s( I,J,L) = SO2_ss
-            H2O2s(I,J,L) = H2O20
+            ! Do this later, SJS 20190801
+            ! SO2s( I,J,L) = SO2_ss
+            ! H2O2s(I,J,L) = H2O20
 
          ELSE
 
             ! Otherwise, don't do aqueous chemistry, and
             ! save the original concentrations into SO2 and H2O2
-            H2O2s(I,J,L) = MAX( H2O20,  1.0e-32_fp )
-            SO2s(I,J,L ) = MAX( SO2_ss, 1.0e-32_fp )
+            ! Do this later, SJS 20190801
+            ! H2O2s(I,J,L) = MAX( H2O20,  1.0e-32_fp )
+            ! SO2s(I,J,L ) = MAX( SO2_ss, 1.0e-32_fp )
+            H2O20        = MAX( H2O20,  1.0e-32_fp ) !SJS
+            SO2_ss       = MAX( SO2_ss, 1.0e-32_fp ) !SJS
             HCHO0        = MAX( HCHO0,  1.0e-32_fp ) !SJS
             HONO0        = MAX( HONO0,  1.0e-32_fp ) !SJS
             NO20         = MAX( NO20,   1.0e-32_fp ) !SJS
@@ -4078,6 +4228,31 @@
 
          ENDIF
 
+         ! SJS-OPTION
+         ! Compute hetchem SO2, SJS 20190801
+         IF ( -1 > 0 ) THEN
+
+            PSO4H1       = 0.e+0_fp
+
+         ELSE
+
+            IF ( SO2_ss > MINDAT ) THEN
+            CALL HETCHEM_SO2( I,         J,          L,
+     &                        SO2_ss,    PSO4H1,
+     &                        am_I_Root, Input_Opt,  State_Met,
+     &                        State_Chm, State_Diag, FullRun, RC )
+            ELSE
+            ! Otherwise set equal to zero
+            PSO4H1       = 0.e+0_fp
+            SO2_ss       = MAX( SO2_ss, MINDAT ) !SJS
+            ENDIF
+
+         ENDIF
+
+         ! Update SO2 level, save SO2[ppv], H2O2[ppv] for WETDEP, SJS 20190801
+         SO2s( I,J,L) = SO2_ss
+         H2O2s(I,J,L) = H2O20
+
          ! Store updated SO2, H2O2 back to the tracer arrays
          If (FullRun) Then 
             Spc(I,J,L,id_SO2)  = SO2s( I,J,L)
@@ -4094,14 +4269,15 @@
          ! SO2 chemical loss rate  = SO4 production rate [v/v/timestep]
          ! Add L5S (qjc, 11/04/16)
          ! Add L6S, L7S and SRhcho, SJS 20190610
-         PSO4_SO2(I,J,L) = L1 + L2S + L3S + L4S + L5S + 
-     &                     L8S + L9S + PSO4E + SRo3 + SRhobr
+         PSO4_SO2(I,J,L) = L1 + L2S + L3S + L4S + L5S +
+     &                     L8S + L9S + PSO4E + SRo3 + SRhobr +
+     &                     PSO4H1
          PSO4P1_SO2(I,J,L) = L8S !SJS 20190708
          PSO4P2_SO2(I,J,L) = L2S
          PSO4P3_SO2(I,J,L) = L3S + SRo3
          PSO4P4_SO2(I,J,L) = L4S
-         PSO4P5_SO2(I,J,L) = L5S + SRhobr
-         PSO4P6_SO2(I,J,L) = PSO4E
+         PSO4P5_SO2(I,J,L) = L5S + SRhobr + PSO4E
+         PSO4P6_SO2(I,J,L) = PSO4H1
          PSO4P7_SO2(I,J,L) = L9S !SJS 20190708
 
          ! Add L6S and L7S, SJS 20190609
@@ -4112,7 +4288,7 @@
 
 !GanLuo
          PSO4s(I,J,L)   = ( L2S + L3S + L4S + L5S + PSO4E + 
-     &                    L8S + L9S + SRo3 + SRhobr ) *
+     &                    L8S + L9S + SRo3 + SRhobr + PSO4H1) *
      &                    State_Met%AD(I,J,L) / ( AIRMW /
      &                    State_Chm%SpcData(id_SO4)%Info%emMW_g )
 
