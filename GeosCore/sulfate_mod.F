@@ -2683,7 +2683,7 @@
 !
       USE CMN_SIZE_MOD
       USE ErrCode_Mod
-      USE ERROR_MOD,          ONLY : IS_SAFE_EXP
+      USE ERROR_MOD,          ONLY : IS_SAFE_EXP, ERROR_STOP
       USE Input_Opt_Mod,      ONLY : OptInput
       USE State_Chm_Mod,      ONLY : ChmState
       USE State_Met_Mod,      ONLY : MetState
@@ -2864,6 +2864,10 @@
      &             SQRT(KchemHCHO) / SQRT(DFKA)
               qq = 3.e+0_fp * ( COTH(q)/q - 1.e+0_fp/q/q )
 
+              If (qq > 1.1e+0_fp .OR. qq < -0.1e+0_fp)
+                  CALL ERROR_STOP('error in qq', 'sulfate_mod.f')
+              Endif
+
               ! Overall rate of HMSA formation [1/s]
               KhetfHMSA = 1.e+0_fp / ( (1.e+0_fp/K1HCHO) +
      &                    (1.e+0_fp/qq/KhetHCHO) )
@@ -2908,6 +2912,7 @@
       LH1S = MIN( LH1S, SO2 )
       LH2S = MIN( LH2S, HMSA )
       LH3S = MIN( LH3S, SO2 )
+      LH3S = MIN( LH3S, HCHO )
 
       END SUBROUTINE HETCHEM_SO2
 !EOC
@@ -4549,9 +4554,11 @@
          PHMSA_SO2(I,J,L) = L6S+SRhcho-L7S + LH3S-LH2S
 
          XX = MIN( SAFE_DIV( HMSC0, HMSA0, 0e+0_fp ), 1e+0_fp )
+         XX = MAX( XX, 0e+0_fp )
          PHMSC_SO2(I,J,L) = L6S+SRhcho-L7S*XX
 
          XX = MIN( SAFE_DIV( HMSP0, HMSA0, 0e+0_fp ), 1e+0_fp )
+         XX = MAX( XX, 0e+0_fp )
          PHMSP_SO2(I,J,L) = LH3S-LH2S*XX
 
          ! Production of sulfate on sea salt
