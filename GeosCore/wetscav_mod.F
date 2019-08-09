@@ -28,8 +28,10 @@
 !GanLuo, added for wet deposition update
       REAL(fp), PUBLIC, ALLOCATABLE, TARGET :: PSO4s(:,:,:)
       REAL(fp), PUBLIC, ALLOCATABLE, TARGET :: QQ3D(:,:,:)
-!SJS 20190630
+!SJS 20190808
       REAL(fp), PUBLIC, ALLOCATABLE, TARGET :: PHMSAs(:,:,:)
+      REAL(fp), PUBLIC, ALLOCATABLE, TARGET :: PHMSCs(:,:,:)
+      REAL(fp), PUBLIC, ALLOCATABLE, TARGET :: PHMSPs(:,:,:)
 !
 ! !PUBLIC MEMBER FUNCTIONS:
 !
@@ -229,8 +231,8 @@
       INTEGER                       :: id_SF1
       INTEGER                       :: id_SO2
       INTEGER                       :: id_SO4
-      INTEGER                       :: id_SO4P2 !SJS
-      INTEGER                       :: id_HMSA  !SJS
+!      INTEGER                       :: id_SO4P2 !SJS
+      INTEGER                       :: id_HMSA, id_HMSC, id_HMSP  !SJS
 
       CONTAINS
 !EOC
@@ -3762,6 +3764,22 @@
          ENDIF
          ENDIF
 
+!SJS 20190808
+         IF(N==id_HMSC)THEN
+         IF(Spc(I,J,L,N)>1.D-30 .and. PHMSCs(I,J,L)>1.D-30)THEN
+           RAINFRAC = RAINFRAC*
+     &    (1.D0-0.5D0*MIN(Spc(I,J,L,N),PHMSCs(I,J,L))/Spc(I,J,L,N))
+         ENDIF
+         ENDIF
+
+!SJS 20190808
+         IF(N==id_HMSP)THEN
+         IF(Spc(I,J,L,N)>1.D-30 .and. PHMSPs(I,J,L)>1.D-30)THEN
+           RAINFRAC = RAINFRAC*
+     &    (1.D0-0.5D0*MIN(Spc(I,J,L,N),PHMSPs(I,J,L))/Spc(I,J,L,N))
+         ENDIF
+         ENDIF
+
          ! WETLOSS is the amount of species in grid box per unit area
          ! (I,J,L) that is lost to rainout [kg/m2]
          WETLOSS = Spc(I,J,L,N) * RAINFRAC
@@ -4240,8 +4258,8 @@
                Spc(I,J,L,id_SO4) = Spc(I,J,L,id_SO4) 
      &                           + GAINED * 96e+0_fp / 64e+0_fp
 
-               Spc(I,J,L,id_SO4P2) = Spc(I,J,L,id_SO4P2) !SJS 
-     &                           + GAINED * 96e+0_fp / 64e+0_fp
+!               Spc(I,J,L,id_SO4P2) = Spc(I,J,L,id_SO4P2) !SJS 
+!     &                           + GAINED * 96e+0_fp / 64e+0_fp
 
                Spc(I,J,L,N)      = Spc(I,J,L,N) *
      &                                          ( 1e+0_fp - WASHFRAC )
@@ -4627,8 +4645,8 @@
             Spc(I,J,L,id_SO4) = Spc(I,J,L,id_SO4) 
      &                        - ( WETLOSS * 96e+0_fp / 64e+0_fp )
 
-            Spc(I,J,L,id_SO4P2) = Spc(I,J,L,id_SO4P2) !SJS 
-     &                        - ( WETLOSS * 96e+0_fp / 64e+0_fp )
+!            Spc(I,J,L,id_SO4P2) = Spc(I,J,L,id_SO4P2) !SJS 
+!     &                        - ( WETLOSS * 96e+0_fp / 64e+0_fp )
 
 
 #if defined( TOMAS )
@@ -5478,8 +5496,10 @@
       id_DUST1 = Ind_('DUST1')
       id_SO2   = Ind_('SO2'  )
       id_SO4   = Ind_('SO4'  )
-      id_SO4P2 = Ind_('SO4P2') !SJS
+!      id_SO4P2 = Ind_('SO4P2') !SJS
       id_HMSA  = Ind_('HMSA' ) !SJS
+      id_HMSC  = Ind_('HMSC' ) !SJS
+      id_HMSP  = Ind_('HMSP' ) !SJS
       id_H2O2  = Ind_('H2O2' )
 
 !      ! Test if the wetdep diagnostics in State_Diag are activated
@@ -5518,6 +5538,18 @@
       CALL GC_CheckVar( 'wetscav_mod.F:PHMSAs', 0, RC )
       IF ( RC /= GC_SUCCESS ) RETURN
       PHMSAs = 0.0_fp
+
+!SJS 20190808
+      ALLOCATE( PHMSCs( IIPAR, JJPAR, LLPAR ), STAT=RC )
+      CALL GC_CheckVar( 'wetscav_mod.F:PHMSCs', 0, RC )
+      IF ( RC /= GC_SUCCESS ) RETURN
+      PHMSCs = 0.0_fp
+
+!SJS 20190808
+      ALLOCATE( PHMSPs( IIPAR, JJPAR, LLPAR ), STAT=RC )
+      CALL GC_CheckVar( 'wetscav_mod.F:PHMSPs', 0, RC )
+      IF ( RC /= GC_SUCCESS ) RETURN
+      PHMSPs = 0.0_fp
 
       !-----------------------------------------------------------------
       ! Only allocate arrays if wetdep or convection is turned on
@@ -5961,6 +5993,16 @@
 !SJS 20190630
       IF ( ALLOCATED( PHMSAs   ) ) DEALLOCATE( PHMSAs,   STAT=RC )
       CALL GC_CheckVar( 'wetscav_mod.F:PHMSAs', 2, RC )
+      IF ( RC /= GC_SUCCESS ) RETURN
+
+!SJS 20190808
+      IF ( ALLOCATED( PHMSCs   ) ) DEALLOCATE( PHMSCs,   STAT=RC )
+      CALL GC_CheckVar( 'wetscav_mod.F:PHMSCs', 2, RC )
+      IF ( RC /= GC_SUCCESS ) RETURN
+
+!SJS 20190808
+      IF ( ALLOCATED( PHMSPs   ) ) DEALLOCATE( PHMSPs,   STAT=RC )
+      CALL GC_CheckVar( 'wetscav_mod.F:PHMSPs', 2, RC )
       IF ( RC /= GC_SUCCESS ) RETURN
 
       IF ( ALLOCATED( REEVAP ) ) DEALLOCATE( REEVAP, STAT=RC )

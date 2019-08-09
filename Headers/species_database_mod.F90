@@ -3194,8 +3194,19 @@ CONTAINS
              WD_RainoutEff = RainEff
 
           ! Add new tracer HMSA, SJS 20190605
+          ! Add new tracer HMSc and HMSp, SJS 20190807
           !---------------------------------
-          CASE( 'HMSA' )
+          CASE( 'HMSA', 'HMSC', 'HMSP' )
+
+             ! These have identical properties except for the names
+             SELECT CASE( TRIM( Name ) )
+                CASE('HMSA')
+                   FullName = 'Hydroxymethanesulfonate Total'
+                CASE('HMSC')
+                   FullName = 'Hydroxymethanesulfonate Cloud'
+                CASE('HMSP')
+                   FullName = 'Hydroxymethanesulfonate Particle'
+             END SELECT
 
              ! Halve the Kc (cloud condensate -> precip) rate
              ! for the temperature range 237 K <= T < 258 K.

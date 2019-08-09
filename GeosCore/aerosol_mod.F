@@ -171,7 +171,7 @@
       INTEGER :: id_OPOA2, id_TSOA1, id_TSOA2, id_TSOA3 
       INTEGER :: id_TSOA0, id_ISOA1, id_ISOA2, id_ISOA3
       INTEGER :: id_ASOAN, id_ASOA1, id_ASOA2, id_ASOA3
-      INTEGER :: id_DUST1, id_SOAS
+      INTEGER :: id_DUST1, id_SOAS,  id_HMSA !SJS 20190807
       INTEGER :: id_SOAGX, id_SOAMG
       INTEGER :: id_SOAIE, id_SOAME
       INTEGER :: id_INDIOL,id_LVOCOA,id_ISN1OA
@@ -944,9 +944,11 @@
          !-------------------------------------------------------
 
          ! Use simple SOA by default over complex SOA in calculations
+         ! Add HMSA, SJS 20190807
          IF ( Is_SimpleSOA ) THEN
             OCPISOA(I,J,L) = 
      &        ( Spc(I,J,L,id_OCPI) * OCFOPOA(I,J) +
+     &          Spc(I,J,L,id_HMSA) +
      &          Spc(I,J,L,id_SOAS)                  ) / AIRVOL(I,J,L)
 
          ELSEIF ( Is_ComplexSOA ) THEN
@@ -2645,6 +2647,7 @@
       id_OCPO   = Ind_( 'OCPO'   ) 
       id_OCPI   = Ind_( 'OCPI'   )  
       id_SOAS   = Ind_( 'SOAS'   )  
+      id_HMSA   = Ind_( 'HMSA'   ) !SJS 20190807 
       id_SALA   = Ind_( 'SALA'   )  
       id_SALC   = Ind_( 'SALC'   )   
       id_SO4    = Ind_( 'SO4'    )         
