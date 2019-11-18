@@ -557,7 +557,8 @@
                DVZ = DVZ * sqrt(State_Chm%SpcData(id_ISOPND)%Info%MW_g)
      &                   / sqrt(SpcInfo%MW_g)            
 
-            ELSE IF ( FLAG(D) .eq. 4 ) THEN !SJS
+            ! SJS-OPTION
+            ELSE IF ( FLAG(D) .eq. 4  .and. -1 > 0 ) THEN !SJS 20191116
 
                ! Scale species to HNO3
                DVZ = DVEL(I,J,NHNO3) * 100.e+0_f8

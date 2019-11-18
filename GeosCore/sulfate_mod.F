@@ -3055,8 +3055,8 @@
       !tdf
       REAL(fp)              :: H2SO4_cd,  H2SO4_gas
 
-      REAL(fp)              :: L5,L5S,SRo3,SRhobr            !(qjc, 04/10/16) 
-      REAL(fp)              :: L5_1,L5S_1,L3_1,L3S_1,KaqO3_1 !(qjc, 04/10/16) 
+      REAL(fp)              :: L5S,SRo3,SRhobr            !(qjc, 04/10/16) 
+      REAL(fp)              :: L5S_1,L3_1,L3S_1,KaqO3_1 !(qjc, 04/10/16) 
       REAL(fp)              :: HSO3aq, SO3aq                 !(qjc, 06/10/16) 
       REAL(fp)              :: SO4H1_vv, SO4H2_vv, LSTOT0    !(qjc, 06/20/16) 
       REAL(fp)              :: rSIV, fupdateHOBr_0  !(qjc, 06/20/16) 
@@ -3191,8 +3191,8 @@
 !$OMP+PRIVATE( ALK_d, KTS, KTN, PSO4_d, PH2SO4_d, PNIT_d, SO2_gas      ) !tdf
 !$OMP+PRIVATE( KTH, H2SO4_cd, H2SO4_gas, Ki                            ) !tdf
 !$OMP+PRIVATE( IBIN, PSO4d_tot, PH2SO4d_tot, PNITd_tot, ALKA_d         )
-!$OMP+PRIVATE( L5, L5S, SRo3, SRhobr, SRhcho, f_sro3                   ) !SJS
-!$OMP+PRIVATE( L3_1, L3S_1,KaqO3_1, L5_1, L5S_1,HSO3aq,SO3aq           ) !qjc
+!$OMP+PRIVATE( L5S, SRo3, SRhobr, SRhcho, f_sro3                   ) !SJS
+!$OMP+PRIVATE( L3_1, L3S_1,KaqO3_1, L5S_1,HSO3aq,SO3aq           ) !qjc
 !$OMP+PRIVATE( SO4H1_vv, SO4H2_vv, LSTOT0, rSIV,fupdateHOBr_0          ) !qjc
 !$OMP+PRIVATE( HCO3, HCHOBr, KO3, KHOBr, f_srhobr, HOBr0, TMP          ) !qjc
 !$OMP+PRIVATE( L4,    L4S,     KaqO2,  DUST, Mn_ant, Mn_nat, Mn_tot    )
@@ -3464,8 +3464,6 @@
          L3      = 0.e+0_fp
          L3_1    = 0.e+0_fp !(qjc, 04/10/16)
          L4      = 0.e+0_fp
-         L5      = 0.e+0_fp !(qjc, 04/10/16)
-         L5_1    = 0.e+0_fp !(qjc, 04/10/16)
          L6      = 0.e+0_fp ! SJS 20190610
          L8      = 0.e+0_fp ! SJS 20190708
          L9      = 0.e+0_fp
@@ -3640,27 +3638,19 @@
                TNO3  = GNO3 + ANIT   ! total nitrate for cloud pH calculations
             ENDIF
 
-        ! Calculate cloud pH
-        ! Add TNVC, SJS 20190514
-        ! Add TNA and TCL from fine and coarse sea salt, SJS 20190604
-        ! Add THMSA, SJS 20190608
-
-        ! SJS-OPTION
-        IF ( -1 > 0 ) THEN
-           TNVC = 0e+0_fp
-           TNA  = 0e+0_fp
-           TCL  = 0e+0_fp
-        ENDIF
-
-        ! SJS-OPTION
-        IF ( -1 > 0 ) THEN
-           CALL GET_HPLUS( SO4nss,THMSA,TNVC,TNH3,TNO3,SO2_ss,
-     &          TCL, TNA, TK, PATM, LWC, HPLUS_45, HPLUS, IonStr )
-        ELSE
-           CALL GET_HPLUS_NEW( SO4nss,THMSA,TNVC,TNH3,TNO3,SO2_ss,
-     &          TFAA, TAAA, TMSA, HONO0,
-     &          TCL, TNA, TK, PATM, LWC, HPLUS_45, HPLUS, IonStr )
-        ENDIF
+            ! Calculate cloud pH
+            ! Add TNVC, SJS 20190514
+            ! Add TNA and TCL from fine and coarse sea salt, SJS 20190604
+            ! Add THMSA, SJS 20190608
+            ! SJS-OPTION
+            IF ( -1 > 0 ) THEN
+               CALL GET_HPLUS( SO4nss,THMSA,TNVC,TNH3,TNO3,SO2_ss,
+     &              TCL, TNA, TK, PATM, LWC, HPLUS_45, HPLUS, IonStr )
+            ELSE
+               CALL GET_HPLUS_NEW( SO4nss,THMSA,TNVC,TNH3,TNO3,SO2_ss,
+     &              TFAA, TAAA, TMSA, HONO0,
+     &              TCL, TNA, TK, PATM, LWC, HPLUS_45, HPLUS, IonStr )
+            ENDIF
 
             ! Store the cloud pH
             pHCloud(I,J,L) = -1.0e+0_fp * log10(HPLUS)
@@ -4071,13 +4061,18 @@
             ENDIF
 
             ! SJS 20190708
-            ! Turn off NO2 and HONO pathways
+            ! Turn off specific pathways
             ! SJS-OPTION
             IF (-1 > 0) THEN
-               L8  = 0.e+0_fp
-               L8S = 0.e+0_fp
-               L9  = 0.e+0_fp
-               L9S = 0.e+0_fp
+               L4    = 0.e+0_fp
+               L4S   = 0.e+0_fp ! TMI+O2
+               L8    = 0.e+0_fp
+               L8S   = 0.e+0_fp ! HONO
+               L9    = 0.e+0_fp
+               L9S   = 0.e+0_fp ! NO2
+               L5S   = 0.e+0_fp
+               L5S_1 = 0.e+0_fp
+               fupdateHOBr_0 = 0.e+0_fp ! HOBr
             ENDIF
 
             ! SJS 20190610
@@ -4332,6 +4327,9 @@
      &               KHCHO2*HCHO0*HCHCHO
                IF ( TMP > 0.0_fp ) THEN 
                   f_srhobr = KHOBr*HOBr0*HCHOBr / TMP
+                  IF ( L5S == 0.e+0_fp ) THEN ! SJS 20191117
+                     f_srhobr = 0.e+0_fp
+                  ENDIF
                   f_sro3   = KO3*O3*HCO3 / TMP !SJS
                   SRhobr   = SR * f_srhobr
                   SRo3     = SR * f_sro3
@@ -4450,15 +4448,6 @@
          ATNO3 = ( Spc(I,J,L,id_HNO3) + Spc(I,J,L,id_NIT) )
      &           * State_Met%AIRDEN(I,J,L) * 1.e+3_fp / AIRMW
 
-         ! SJS-OPTION
-         IF ( -1 > 0 ) THEN
-            ATCA = 0e+0_fp
-            ATMG = 0e+0_fp
-            ATK  = 0e+0_fp
-            ATNA = 0e+0_fp
-            ATCL = 0e+0_fp
-         ENDIF
-
          CALL GET_AHPLUS( TK, XRH, ATNA, ATSO4, ATNH3, ATNO3, ATCL,
      &           ATCA, ATK, ATMG, ALWC, AHPLUS, AIonStr, AWVF )
 
@@ -4480,10 +4469,10 @@
 
          ! SJS-OPTION
          ! Option to turn off hetchem, SJS 20190809
-         IF ( -1 > 0 ) THEN
+         IF ( 1 > 0 ) THEN
             LH1S = 0.e+0_fp
-            LH2S = 0.e+0_fp
-            LH3S = 0.e+0_fp
+!            LH2S = 0.e+0_fp
+!            LH3S = 0.e+0_fp
          ENDIF
 
          !==============================================================
@@ -6208,6 +6197,18 @@
       ! GET_HPLUS_NEW begins here!
       !=================================================================
 
+      ! SJS-OPTION
+      IF ( -1 > 0 ) THEN
+         TNVC = 0e+0_fp
+         NA   = 0e+0_fp
+         CL   = 0e+0_fp
+         SO2  = 0e+0_fp
+         TNO2 = 0e+0_fp
+         FAA  = 0e+0_fp
+         AAA  = 0e+0_fp
+         TMSA = 0e+0_fp
+      ENDIF
+
       ! Initial pH guess 
       ipH = -log10(iHPLUS)
 
@@ -6399,6 +6400,15 @@
       !=================================================================
       ! GET_AHPLUS begins here!
       !=================================================================
+
+      ! SJS-OPTION
+      IF ( -1 > 0 ) THEN
+         TCA = 0e+0_fp
+         TMG = 0e+0_fp
+         ATK  = 0e+0_fp
+         TNA = 0e+0_fp
+         TCL = 0e+0_fp
+      ENDIF
 
       ! Initialize
       WT(:)     = 0.0e+0_f8
