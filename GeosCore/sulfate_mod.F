@@ -3042,7 +3042,7 @@
       REAL(fp)              :: XX, IonStr,  TNVC, TNA, TCL, THMSA ! SJS
       REAL(fp)              :: TFAA, TAAA, TMSA, LH1S, LH2S, LH3S ! SJS
       REAL(fp)              :: ATSO4, ATCA, ATK, ATMG, ATCL, ATNA ! SJS
-      REAL(fp)              :: ATNH3, ATNO3, XRH                  ! SJS
+      REAL(fp)              :: ATNH3, ATNO3, XRH, TNO2, TSO2      ! SJS
       REAL(fp)              :: ALWC, AHPLUS, AIonStr, AWVF        ! SJS
       REAL(fp)              :: SRhcho, L6, L6S, L7S, f_sro3       ! SJS
       REAL(fp)              :: HPLUS, SO4nss, TNH3, TNO3, GNO3, ANIT
@@ -3182,7 +3182,7 @@
 !$OMP+PRIVATE( KdHMSA, L6, L6S, L7S, HCHO0, HMSA0, HMSC0, HMSP0        ) !SJS
 !$OMP+PRIVATE( Kt1, Kt2, AREASS1, AREASS2, SO2_ss, Kt1N, Kt2N          )
 !$OMP+PRIVATE( PSO4E, PSO4F, XX, IonStr, TNVC, TNA, TCL, THMSA         ) !SJS
-!$OMP+PRIVATE( TFAA, TAAA, TMSA, LH1S, LH2S, LH3S                      ) !SJS
+!$OMP+PRIVATE( TFAA, TAAA, TMSA, TSO2, TNO2, LH1S, LH2S, LH3S          ) !SJS
 !$OMP+PRIVATE( ATSO4, ATCA, ATK, ATMG, ATCL, ATNA                      ) !SJS
 !$OMP+PRIVATE( ATNH3, ATNO3, ALWC, AHPLUS, AIonStr, AWVF, XRH          ) !SJS
 !$OMP+PRIVATE( HPLUS, SO4nss, TNH3, TNO3,  GNO3, ANIT,   LSTOT, ALKdst )
@@ -3642,13 +3642,28 @@
             ! Add TNVC, SJS 20190514
             ! Add TNA and TCL from fine and coarse sea salt, SJS 20190604
             ! Add THMSA, SJS 20190608
+            TSO2 = SO2_ss
+            TNO2 = HONO0
+
             ! SJS-OPTION
             IF ( -1 > 0 ) THEN
-               CALL GET_HPLUS( SO4nss,THMSA,TNVC,TNH3,TNO3,SO2_ss,
+               TNVC  = 0e+0_fp
+               TNA   = 0e+0_fp
+               TCL   = 0e+0_fp
+               TSO2  = 0e+0_fp
+               TNO2  = 0e+0_fp
+               TFAA  = 0e+0_fp
+               TAAA  = 0e+0_fp
+               TMSA  = 0e+0_fp
+            ENDIF
+
+            ! SJS-OPTION
+            IF ( -1 > 0 ) THEN
+               CALL GET_HPLUS( SO4nss,THMSA,TNVC,TNH3,TNO3,TSO2,
      &              TCL, TNA, TK, PATM, LWC, HPLUS_45, HPLUS, IonStr )
             ELSE
-               CALL GET_HPLUS_NEW( SO4nss,THMSA,TNVC,TNH3,TNO3,SO2_ss,
-     &              TFAA, TAAA, TMSA, HONO0,
+               CALL GET_HPLUS_NEW( SO4nss,THMSA,TNVC,TNH3,TNO3,TSO2,
+     &              TFAA, TAAA, TMSA, TNO2,
      &              TCL, TNA, TK, PATM, LWC, HPLUS_45, HPLUS, IonStr )
             ENDIF
 
@@ -4421,6 +4436,8 @@
      &           1.e+3_fp / AIRMW
      &           + Spc(I,J,L,id_HMSA) * State_Met%AIRDEN(I,J,L) *
      &           1.e+3_fp / AIRMW / 2.e+0_fp
+     &           + Spc(I,J,L,id_MSA) * State_Met%AIRDEN(I,J,L) *
+     &           1.e+3_fp / AIRMW / 2.e+0_fp
 
          ! Fine dust [mole/m3]
          ATCA = Spc(I,J,L,id_DST1) * 0.022e+0_fp *
@@ -4447,6 +4464,15 @@
          ! Total nitrate (HNO3 + NIT) [mole/m3]
          ATNO3 = ( Spc(I,J,L,id_HNO3) + Spc(I,J,L,id_NIT) )
      &           * State_Met%AIRDEN(I,J,L) * 1.e+3_fp / AIRMW
+
+         ! SJS-OPTION
+         IF ( -1 > 0 ) THEN
+            ATCA = 0e+0_fp
+            ATMG = 0e+0_fp
+            ATK  = 0e+0_fp
+            ATNA = 0e+0_fp
+            ATCL = 0e+0_fp
+         ENDIF
 
          CALL GET_AHPLUS( TK, XRH, ATNA, ATSO4, ATNH3, ATNO3, ATCL,
      &           ATCA, ATK, ATMG, ALWC, AHPLUS, AIonStr, AWVF )
@@ -6197,18 +6223,6 @@
       ! GET_HPLUS_NEW begins here!
       !=================================================================
 
-      ! SJS-OPTION
-      IF ( -1 > 0 ) THEN
-         TNVC = 0e+0_fp
-         NA   = 0e+0_fp
-         CL   = 0e+0_fp
-         SO2  = 0e+0_fp
-         TNO2 = 0e+0_fp
-         FAA  = 0e+0_fp
-         AAA  = 0e+0_fp
-         TMSA = 0e+0_fp
-      ENDIF
-
       ! Initial pH guess 
       ipH = -log10(iHPLUS)
 
@@ -6400,15 +6414,6 @@
       !=================================================================
       ! GET_AHPLUS begins here!
       !=================================================================
-
-      ! SJS-OPTION
-      IF ( -1 > 0 ) THEN
-         TCA = 0e+0_fp
-         TMG = 0e+0_fp
-         ATK  = 0e+0_fp
-         TNA = 0e+0_fp
-         TCL = 0e+0_fp
-      ENDIF
 
       ! Initialize
       WT(:)     = 0.0e+0_f8
