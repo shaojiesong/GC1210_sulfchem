@@ -2599,33 +2599,56 @@
 
       !=================================================================
       !  Aqueous reactions of SO2 with HCHO, SJS 20190607
+      !  HMSA decomposition reaction, SJS 20190608
       !  HSO3-   + HCHO => HMSA       (1)
       !  SO3--   + HCHO => HMSA       (2)
       !=================================================================
 
+      ! Temperature dependent water equilibrium constant
+      Kw_T = Kw*exp(DhrKw*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+
       ! SJS-OPTION
-      ! 20190701, option to use Lagrange data
-      IF ( 1 > 0 ) THEN
+      ! 20191120, option to use different kinetic data
+      SELECT CASE( 0 )
 
-         KHCHO1 = 3.2e+2_fp *
-     &        EXP(-2.7e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+         CASE( 0 ) ! best
 
-         KHCHO2 = 3.8e+6_fp *
-     &        EXP(-2.5e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+            KHCHO1 = 3.2e+2_fp *
+     &           EXP(-2.7e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
 
-      ELSE
+            KHCHO2 = 3.8e+6_fp *
+     &           EXP(-2.5e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
 
-         KHCHO1 = 3.6e+2_fp *
-     &        EXP(-2.7e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+            KhetdHMSA = 6.2e-8_fp * 
+     &           exp(-1.1e+4_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))+
+     &           4.8e+3_fp * (Kw_T / Hplus) * 
+     &           exp(-4.7e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
 
-         KHCHO2 = 1.0e+3_fp *
-     &        EXP(-2.5e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+         CASE( 1 ) ! low
 
-      ENDIF
+            KHCHO1 = 3.6e+2_fp *
+     &           EXP(-2.7e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
 
-      !=================================================================
-      ! HCHO equilibrium reaction, SJS 20190608
-      !=================================================================
+            KHCHO2 = 1.0e+3_fp *
+     &           EXP(-2.5e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+
+            KhetdHMSA = 1.1e+4_fp * (Kw_T / Hplus) * 
+     &           exp(-4.7e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+
+         CASE( 2 ) ! high
+
+            KHCHO1 = 7.9e+2_fp *
+     &           EXP(-2.7e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+
+            KHCHO2 = 2.5e+7_fp *
+     &           EXP(-2.5e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+
+            KhetdHMSA = 4.4e-8_fp * 
+     &           exp(-1.1e+4_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))+
+     &           3.4e+3_fp * (Kw_T / Hplus) * 
+     &           exp(-4.7e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+
+      END SELECT
 
       ! Intrinsic Henry's constant for HCHO
       HCHCHO = 2.5e+0_fp *
@@ -2636,19 +2659,6 @@
      &          EXP(7.1e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
 
       XHCHOg  = 1.e+0_fp / ( 1.e+0_fp + ( FHCHCHO * R * T * ALWC ) )
-
-      !=================================================================
-      ! HMSA formation and decomposition, SJS 20190608
-      !=================================================================
-
-      ! Temperature dependent water equilibrium constant
-      Kw_T = Kw*exp(DhrKw*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
-
-      ! Decomposition, 1/s
-      KhetdHMSA = 6.2e-8_fp *
-     &            exp(-1.1e+4_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))+
-     &            4.8e+3_fp * (Kw_T / AHplus) *
-     &            exp(-4.7e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
 
       ! Conversion rate from SO2 to HMSA
       KchemHCHO = (KHCHO1*XHSO3 + KHCHO2*XSO3)
@@ -8070,29 +8080,56 @@
 
       !=================================================================
       !  Aqueous reactions of SO2 with HCHO, SJS 20190607
+      !  HMSA decomposition reaction, SJS 20190608
       !  HSO3-   + HCHO => HMSA       (1)
       !  SO3--   + HCHO => HMSA       (2)
       !=================================================================
 
+      ! Temperature dependent water equilibrium constant
+      Kw_T = Kw*exp(DhrKw*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+
       ! SJS-OPTION
-      ! 20190701, option to use Lagrange data
-      IF ( 1 > 0 ) THEN
+      ! 20191120, option to use different kinetic data
+      SELECT CASE( 0 )
 
-         KHCHO1 = 3.2e+2_fp *
-     &        EXP(-2.7e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+         CASE( 0 ) ! best
 
-         KHCHO2 = 3.8e+6_fp *
-     &        EXP(-2.5e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+            KHCHO1 = 3.2e+2_fp *
+     &           EXP(-2.7e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
 
-      ELSE
+            KHCHO2 = 3.8e+6_fp *
+     &           EXP(-2.5e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
 
-         KHCHO1 = 3.6e+2_fp *
-     &        EXP(-2.7e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+            KdHMSA = 6.2e-8_fp * 
+     &           exp(-1.1e+4_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))+
+     &           4.8e+3_fp * (Kw_T / Hplus) * 
+     &           exp(-4.7e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
 
-         KHCHO2 = 1.0e+3_fp *
-     &        EXP(-2.5e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+         CASE( 1 ) ! low
 
-      ENDIF
+            KHCHO1 = 3.6e+2_fp *
+     &           EXP(-2.7e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+
+            KHCHO2 = 1.0e+3_fp *
+     &           EXP(-2.5e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+
+            KdHMSA = 1.1e+4_fp * (Kw_T / Hplus) * 
+     &           exp(-4.7e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+
+         CASE( 2 ) ! high
+
+            KHCHO1 = 7.9e+2_fp *
+     &           EXP(-2.7e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+
+            KHCHO2 = 2.5e+7_fp *
+     &           EXP(-2.5e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+
+            KdHMSA = 4.4e-8_fp * 
+     &           exp(-1.1e+4_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))+
+     &           3.4e+3_fp * (Kw_T / Hplus) * 
+     &           exp(-4.7e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+
+      END SELECT
 
       !=================================================================
       ! HCHO equilibrium reaction, SJS 20190608
@@ -8111,18 +8148,6 @@
       ! Conversion rate from SO2 to HMSA
       KaqHCHO = (KHCHO1*XHSO3 + KHCHO2*XSO3) * FHCSO2 * XSO2g
      &          * P * HCHCHO * XHCHOg * LWC * R * T   ! [v/v/s]
-
-      !=================================================================
-      ! HMSA decomposition reaction, SJS 20190608
-      !=================================================================
-
-      ! Temperature dependent water equilibrium constant
-      Kw_T = Kw*exp(DhrKw*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
-
-      KdHMSA = 6.2e-8_fp * 
-     &         exp(-1.1e+4_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))+
-     &         4.8e+3_fp * (Kw_T / Hplus) * 
-     &         exp(-4.7e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
 
       !=================================================================
       ! NO2 + SO2, SJS 20190708
