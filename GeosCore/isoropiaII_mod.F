@@ -468,8 +468,8 @@
          ! Total SO4 [mole/m3]
          ! SJS 20190726
          TSO4 = Spc(I,J,L,id_SO4) * 1.e+3_fp / ( 96.e+0_fp * VOL )
-     &          +Spc(I,J,L,id_HMSA)*1.e+3_fp/(111.e+0_fp*VOL)/2.e+0_fp
-     &          +Spc(I,J,L,id_MSA) *1.e+3_fp/(96.e+0_fp *VOL)/2.e+0_fp
+     &         +Spc(I,J,L,id_HMSA)*1.e+3_fp/(111.e+0_fp*VOL)/2.e+0_fp
+     &         +Spc(I,J,L,id_MSA) *1.e+3_fp/(96.e+0_fp *VOL)/2.e+0_fp
 
          ! Total NH3 [mole/m3] 
          TNH3 = Spc(I,J,L,id_NH4) * 1.e+3_fp / (18.e+0_fp * VOL ) +

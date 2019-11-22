@@ -3664,7 +3664,6 @@
                TNO2  = 0e+0_fp
                TFAA  = 0e+0_fp
                TAAA  = 0e+0_fp
-               TMSA  = 0e+0_fp
             ENDIF
 
             ! SJS-OPTION
