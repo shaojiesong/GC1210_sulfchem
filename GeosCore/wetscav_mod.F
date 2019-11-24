@@ -32,6 +32,14 @@
       REAL(fp), PUBLIC, ALLOCATABLE, TARGET :: PHMSAs(:,:,:)
       REAL(fp), PUBLIC, ALLOCATABLE, TARGET :: PHMSCs(:,:,:)
       REAL(fp), PUBLIC, ALLOCATABLE, TARGET :: PHMSPs(:,:,:)
+!SJS 20191124
+      REAL(fp), PUBLIC, ALLOCATABLE, TARGET :: PSO4P1s(:,:,:)
+      REAL(fp), PUBLIC, ALLOCATABLE, TARGET :: PSO4P2s(:,:,:)
+      REAL(fp), PUBLIC, ALLOCATABLE, TARGET :: PSO4P3s(:,:,:)
+      REAL(fp), PUBLIC, ALLOCATABLE, TARGET :: PSO4P4s(:,:,:)
+      REAL(fp), PUBLIC, ALLOCATABLE, TARGET :: PSO4P5s(:,:,:)
+      REAL(fp), PUBLIC, ALLOCATABLE, TARGET :: PSO4P6s(:,:,:)
+      REAL(fp), PUBLIC, ALLOCATABLE, TARGET :: PSO4P7s(:,:,:)
 !
 ! !PUBLIC MEMBER FUNCTIONS:
 !
@@ -231,7 +239,9 @@
       INTEGER                       :: id_SF1
       INTEGER                       :: id_SO2
       INTEGER                       :: id_SO4
-!      INTEGER                       :: id_SO4P2 !SJS
+      INTEGER                       :: id_SO4P1, id_SO4P2, id_SO4P3 !SJS
+      INTEGER                       :: id_SO4P4, id_SO4P5, id_SO4P6 !SJS
+      INTEGER                       :: id_SO4P7                     !SJS
       INTEGER                       :: id_HMSA, id_HMSC, id_HMSP  !SJS
 
       CONTAINS
@@ -3750,9 +3760,59 @@
 #endif
 !GanLuo
          IF(N==id_SO4)THEN
-         IF(Spc(I,J,L,N)>1.D-30)THEN
+         IF(Spc(I,J,L,N)>1.D-30 .and. PSO4s(I,J,L)>1.D-30)THEN
            RAINFRAC = RAINFRAC*
      &    (1.D0-0.5D0*MIN(Spc(I,J,L,N),PSO4s(I,J,L))/Spc(I,J,L,N))
+         ENDIF
+         ENDIF
+
+!SJS 20191124
+         IF(N==id_SO4P1)THEN
+         IF(Spc(I,J,L,N)>1.D-30 .and. PSO4P1s(I,J,L)>1.D-30)THEN
+           RAINFRAC = RAINFRAC*
+     &    (1.D0-0.5D0*MIN(Spc(I,J,L,N),PSO4P1s(I,J,L))/Spc(I,J,L,N))
+         ENDIF
+         ENDIF
+
+         IF(N==id_SO4P2)THEN
+         IF(Spc(I,J,L,N)>1.D-30 .and. PSO4P2s(I,J,L)>1.D-30)THEN
+           RAINFRAC = RAINFRAC*
+     &    (1.D0-0.5D0*MIN(Spc(I,J,L,N),PSO4P2s(I,J,L))/Spc(I,J,L,N))
+         ENDIF
+         ENDIF
+
+         IF(N==id_SO4P3)THEN
+         IF(Spc(I,J,L,N)>1.D-30 .and. PSO4P3s(I,J,L)>1.D-30)THEN
+           RAINFRAC = RAINFRAC*
+     &    (1.D0-0.5D0*MIN(Spc(I,J,L,N),PSO4P3s(I,J,L))/Spc(I,J,L,N))
+         ENDIF
+         ENDIF
+
+         IF(N==id_SO4P4)THEN
+         IF(Spc(I,J,L,N)>1.D-30 .and. PSO4P4s(I,J,L)>1.D-30)THEN
+           RAINFRAC = RAINFRAC*
+     &    (1.D0-0.5D0*MIN(Spc(I,J,L,N),PSO4P4s(I,J,L))/Spc(I,J,L,N))
+         ENDIF
+         ENDIF
+
+         IF(N==id_SO4P5)THEN
+         IF(Spc(I,J,L,N)>1.D-30 .and. PSO4P5s(I,J,L)>1.D-30)THEN
+           RAINFRAC = RAINFRAC*
+     &    (1.D0-0.5D0*MIN(Spc(I,J,L,N),PSO4P5s(I,J,L))/Spc(I,J,L,N))
+         ENDIF
+         ENDIF
+
+         IF(N==id_SO4P6)THEN
+         IF(Spc(I,J,L,N)>1.D-30 .and. PSO4P6s(I,J,L)>1.D-30)THEN
+           RAINFRAC = RAINFRAC*
+     &    (1.D0-0.5D0*MIN(Spc(I,J,L,N),PSO4P6s(I,J,L))/Spc(I,J,L,N))
+         ENDIF
+         ENDIF
+
+         IF(N==id_SO4P7)THEN
+         IF(Spc(I,J,L,N)>1.D-30 .and. PSO4P7s(I,J,L)>1.D-30)THEN
+           RAINFRAC = RAINFRAC*
+     &    (1.D0-0.5D0*MIN(Spc(I,J,L,N),PSO4P7s(I,J,L))/Spc(I,J,L,N))
          ENDIF
          ENDIF
 
@@ -4258,8 +4318,8 @@
                Spc(I,J,L,id_SO4) = Spc(I,J,L,id_SO4) 
      &                           + GAINED * 96e+0_fp / 64e+0_fp
 
-!               Spc(I,J,L,id_SO4P2) = Spc(I,J,L,id_SO4P2) !SJS 
-!     &                           + GAINED * 96e+0_fp / 64e+0_fp
+               Spc(I,J,L,id_SO4P2) = Spc(I,J,L,id_SO4P2) !SJS 
+     &                           + GAINED * 96e+0_fp / 64e+0_fp
 
                Spc(I,J,L,N)      = Spc(I,J,L,N) *
      &                                          ( 1e+0_fp - WASHFRAC )
@@ -4645,8 +4705,8 @@
             Spc(I,J,L,id_SO4) = Spc(I,J,L,id_SO4) 
      &                        - ( WETLOSS * 96e+0_fp / 64e+0_fp )
 
-!            Spc(I,J,L,id_SO4P2) = Spc(I,J,L,id_SO4P2) !SJS 
-!     &                        - ( WETLOSS * 96e+0_fp / 64e+0_fp )
+            Spc(I,J,L,id_SO4P2) = Spc(I,J,L,id_SO4P2) !SJS 
+     &                        - ( WETLOSS * 96e+0_fp / 64e+0_fp )
 
 
 #if defined( TOMAS )
@@ -5496,7 +5556,13 @@
       id_DUST1 = Ind_('DUST1')
       id_SO2   = Ind_('SO2'  )
       id_SO4   = Ind_('SO4'  )
-!      id_SO4P2 = Ind_('SO4P2') !SJS
+      id_SO4P1 = Ind_('SO4P1') !SJS
+      id_SO4P2 = Ind_('SO4P2') !SJS
+      id_SO4P3 = Ind_('SO4P3') !SJS
+      id_SO4P4 = Ind_('SO4P4') !SJS
+      id_SO4P5 = Ind_('SO4P5') !SJS
+      id_SO4P6 = Ind_('SO4P6') !SJS
+      id_SO4P7 = Ind_('SO4P7') !SJS
       id_HMSA  = Ind_('HMSA' ) !SJS
       id_HMSC  = Ind_('HMSC' ) !SJS
       id_HMSP  = Ind_('HMSP' ) !SJS
@@ -5532,6 +5598,42 @@
       CALL GC_CheckVar( 'wetscav_mod.F:QQ3D', 0, RC )
       IF ( RC /= GC_SUCCESS ) RETURN
       QQ3D = 0.0_fp
+
+!SJS 20191124
+      ALLOCATE( PSO4P1s( IIPAR, JJPAR, LLPAR ), STAT=RC )
+      CALL GC_CheckVar( 'wetscav_mod.F:PSO4P1s', 0, RC )
+      IF ( RC /= GC_SUCCESS ) RETURN
+      PSO4P1s = 0.0_fp
+
+      ALLOCATE( PSO4P2s( IIPAR, JJPAR, LLPAR ), STAT=RC )
+      CALL GC_CheckVar( 'wetscav_mod.F:PSO4P2s', 0, RC )
+      IF ( RC /= GC_SUCCESS ) RETURN
+      PSO4P2s = 0.0_fp
+
+      ALLOCATE( PSO4P3s( IIPAR, JJPAR, LLPAR ), STAT=RC )
+      CALL GC_CheckVar( 'wetscav_mod.F:PSO4P3s', 0, RC )
+      IF ( RC /= GC_SUCCESS ) RETURN
+      PSO4P3s = 0.0_fp
+
+      ALLOCATE( PSO4P4s( IIPAR, JJPAR, LLPAR ), STAT=RC )
+      CALL GC_CheckVar( 'wetscav_mod.F:PSO4P4s', 0, RC )
+      IF ( RC /= GC_SUCCESS ) RETURN
+      PSO4P4s = 0.0_fp
+
+      ALLOCATE( PSO4P5s( IIPAR, JJPAR, LLPAR ), STAT=RC )
+      CALL GC_CheckVar( 'wetscav_mod.F:PSO4P5s', 0, RC )
+      IF ( RC /= GC_SUCCESS ) RETURN
+      PSO4P5s = 0.0_fp
+
+      ALLOCATE( PSO4P6s( IIPAR, JJPAR, LLPAR ), STAT=RC )
+      CALL GC_CheckVar( 'wetscav_mod.F:PSO4P6s', 0, RC )
+      IF ( RC /= GC_SUCCESS ) RETURN
+      PSO4P6s = 0.0_fp
+
+      ALLOCATE( PSO4P7s( IIPAR, JJPAR, LLPAR ), STAT=RC )
+      CALL GC_CheckVar( 'wetscav_mod.F:PSO4P7s', 0, RC )
+      IF ( RC /= GC_SUCCESS ) RETURN
+      PSO4P7s = 0.0_fp
 
 !SJS 20190630
       ALLOCATE( PHMSAs( IIPAR, JJPAR, LLPAR ), STAT=RC )
@@ -5988,6 +6090,35 @@
 
       IF ( ALLOCATED( QQ3D  ) ) DEALLOCATE( QQ3D,  STAT=RC )
       CALL GC_CheckVar( 'wetscav_mod.F:QQ3D', 2, RC )
+      IF ( RC /= GC_SUCCESS ) RETURN
+
+!SJS 20191124
+      IF ( ALLOCATED( PSO4P1s   ) ) DEALLOCATE( PSO4P1s,   STAT=RC )
+      CALL GC_CheckVar( 'wetscav_mod.F:PSO4P1s', 2, RC )
+      IF ( RC /= GC_SUCCESS ) RETURN
+
+      IF ( ALLOCATED( PSO4P2s   ) ) DEALLOCATE( PSO4P2s,   STAT=RC )
+      CALL GC_CheckVar( 'wetscav_mod.F:PSO4P2s', 2, RC )
+      IF ( RC /= GC_SUCCESS ) RETURN
+
+      IF ( ALLOCATED( PSO4P3s   ) ) DEALLOCATE( PSO4P3s,   STAT=RC )
+      CALL GC_CheckVar( 'wetscav_mod.F:PSO4P3s', 2, RC )
+      IF ( RC /= GC_SUCCESS ) RETURN
+
+      IF ( ALLOCATED( PSO4P4s   ) ) DEALLOCATE( PSO4P4s,   STAT=RC )
+      CALL GC_CheckVar( 'wetscav_mod.F:PSO4P4s', 2, RC )
+      IF ( RC /= GC_SUCCESS ) RETURN
+
+      IF ( ALLOCATED( PSO4P5s   ) ) DEALLOCATE( PSO4P5s,   STAT=RC )
+      CALL GC_CheckVar( 'wetscav_mod.F:PSO4P5s', 2, RC )
+      IF ( RC /= GC_SUCCESS ) RETURN
+
+      IF ( ALLOCATED( PSO4P6s   ) ) DEALLOCATE( PSO4P6s,   STAT=RC )
+      CALL GC_CheckVar( 'wetscav_mod.F:PSO4P6s', 2, RC )
+      IF ( RC /= GC_SUCCESS ) RETURN
+
+      IF ( ALLOCATED( PSO4P7s   ) ) DEALLOCATE( PSO4P7s,   STAT=RC )
+      CALL GC_CheckVar( 'wetscav_mod.F:PSO4P7s', 2, RC )
       IF ( RC /= GC_SUCCESS ) RETURN
 
 !SJS 20190630

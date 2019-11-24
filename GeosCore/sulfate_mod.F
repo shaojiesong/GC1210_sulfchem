@@ -2902,6 +2902,8 @@
       USE TIME_MOD,           ONLY : ITS_A_NEW_MONTH
 !GanLuo
       USE WETSCAV_MOD,        ONLY : QQ3D, PSO4s
+      USE WETSCAV_MOD,        ONLY : PSO4P1s, PSO4P2s, PSO4P3s, PSO4P4s
+      USE WETSCAV_MOD,        ONLY : PSO4P5s, PSO4P6s, PSO4P7s ! SJS 20191124
       USE WETSCAV_MOD,        ONLY : PHMSAs, PHMSCs, PHMSPs ! SJS 20190808
       USE HCO_INTERFACE_MOD,  ONLY : GetHcoDiagn
 #if defined( BPCH_DIAG ) 
@@ -4606,6 +4608,35 @@
          PSO4s(I,J,L)   = ( PSO4_SO2(I,J,L) ) *
      &                    State_Met%AD(I,J,L) / ( AIRMW /
      &                    State_Chm%SpcData(id_SO4)%Info%emMW_g )
+
+!SJS 20191124
+         PSO4P1s(I,J,L) = ( PSO4P1_SO2(I,J,L) ) *
+     &                    State_Met%AD(I,J,L) / ( AIRMW /
+     &                    State_Chm%SpcData(id_SO4P1)%Info%emMW_g )
+
+         PSO4P2s(I,J,L) = ( PSO4P2_SO2(I,J,L) ) *
+     &                    State_Met%AD(I,J,L) / ( AIRMW /
+     &                    State_Chm%SpcData(id_SO4P2)%Info%emMW_g )
+
+         PSO4P3s(I,J,L) = ( PSO4P3_SO2(I,J,L) ) *
+     &                    State_Met%AD(I,J,L) / ( AIRMW /
+     &                    State_Chm%SpcData(id_SO4P3)%Info%emMW_g )
+
+         PSO4P4s(I,J,L) = ( PSO4P4_SO2(I,J,L) ) *
+     &                    State_Met%AD(I,J,L) / ( AIRMW /
+     &                    State_Chm%SpcData(id_SO4P4)%Info%emMW_g )
+
+         PSO4P5s(I,J,L) = ( PSO4P5_SO2(I,J,L) ) *
+     &                    State_Met%AD(I,J,L) / ( AIRMW /
+     &                    State_Chm%SpcData(id_SO4P5)%Info%emMW_g )
+
+         PSO4P6s(I,J,L) = ( PSO4P6_SO2(I,J,L) ) *
+     &                    State_Met%AD(I,J,L) / ( AIRMW /
+     &                    State_Chm%SpcData(id_SO4P6)%Info%emMW_g )
+
+         PSO4P7s(I,J,L) = ( PSO4P7_SO2(I,J,L) ) *
+     &                    State_Met%AD(I,J,L) / ( AIRMW /
+     &                    State_Chm%SpcData(id_SO4P7)%Info%emMW_g )
 
 !SJS 20190630
          PHMSAs(I,J,L)  = ( PHMSA_SO2(I,J,L) ) *
