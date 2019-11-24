@@ -3441,6 +3441,8 @@
 
          ! Get cloud fraction from met fields
          FC      = State_Met%CLDF(I,J,L)
+         FC      = MIN(1.d0, FC) !SJS 20191124, make sure 0<=FC<=1
+         FC      = MAX(0.d0, FC)
 
          ! Get liquid water content [m3 H2O/m3 air] within cloud from met flds
          ! Units: [kg H2O/kg air] * [kg air/m3 air] * [m3 H2O/1e3 kg H2O]
@@ -4502,6 +4504,14 @@
             LH1S = 0.e+0_fp
             LH2S = 0.e+0_fp
             LH3S = 0.e+0_fp
+         ENDIF
+
+         ! SJS-OPTION
+         ! Default option to limit aerosol reaction to non FC, SJS 20191124
+         IF ( 1 > 0 ) THEN
+            LH1S = LH1S * ( 1.e+0_fp - FC )
+            LH2S = LH2S * ( 1.e+0_fp - FC )
+            LH3S = LH3S * ( 1.e+0_fp - FC )
          ENDIF
 
          ! SJS-OPTION
