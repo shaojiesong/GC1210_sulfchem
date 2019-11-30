@@ -250,6 +250,8 @@
       ! Temporary variable for NO3-
       REAL(fp)                 :: NITRTEMP
 
+      ! Temporary variable for water fraction
+      REAL(fp)                 :: WVF
 
       ! debug variables
       INTEGER                  :: Itemp, Jtemp, Ltemp
@@ -285,6 +287,17 @@
       LPRT                 = Input_Opt%LPRT  
       IT_IS_AN_AEROSOL_SIM = Input_Opt%ITS_AN_AEROSOL_SIM
       IT_IS_A_FULLCHEM_SIM = Input_Opt%ITS_A_FULLCHEM_SIM
+
+      ! Zero State_Chm arrays to avoid leftover values from hanging
+      ! around between calls -- especially up near the tropopause
+      State_Chm%pHSav      = 0.0_fp
+      State_Chm%HSALW      = 0.0_fp
+      State_Chm%HplusSav   = 0.0_fp
+      State_Chm%WaterSav   = 0.0_fp
+      State_Chm%SulratSav  = 0.0_fp
+      State_Chm%NaRatSav   = 0.0_fp
+      State_Chm%BisulSav   = 0.0_fp
+      State_Chm%AcidPurSav = 0.0_fp
 
       ! First-time initialization
       IF ( FIRST ) THEN
@@ -425,7 +438,7 @@
 !$OMP+PRIVATE( SCASI,   P_PA,     TNO3,       AERLIQ,    AERSLD  )
 !$OMP+PRIVATE( OTHER,   TNH4,     TNIT,       HPLUSTEMP, NUM_SAV )
 !$OMP+PRIVATE( DEN_SAV, HNO3_DEN, OutOfBounds                    )
-!$OMP+PRIVATE( SULFTEMP, BISULTEMP, NITRTEMP                     )
+!$OMP+PRIVATE( SULFTEMP, BISULTEMP, NITRTEMP, WVF                ) ! SJS
 !$OMP+SCHEDULE( DYNAMIC, 1 )
       DO L = 1, LLPAR
       DO J = 1, JJPAR
@@ -733,7 +746,20 @@
          ! AEROPH: get pH related info to SAV arrays (hotp 8/11/09)
          ! HPLUSTEMP is H+ in mol/L water, AERLIQ1 is H, AERLIQ8 is H2O
          ! in mol/m3 air --> convert to mol/L water
-         IF ( AERLIQ(8) < 1e-18_fp ) THEN
+
+         WVF = AERLIQ(8)*18e+0_fp / 1.e+3_fp /
+     &         ( ( AERLIQ(1)*1e+0_fp + AERLIQ(3)*18e+0_fp +
+     &             AERLIQ(5)*96e+0_fp + AERLIQ(6)*97e+0_fp +
+     &             AERLIQ(7)*62e+0_fp + AERLIQ(9)*17e+0_fp +
+     &             AERLIQ(11)*63e+0_fp + AERLIQ(12)*17e+0_fp )
+     &           / 1.7e+3_fp +
+     &           ( AERLIQ(2)*23e+0_fp + AERLIQ(4)*35.5e+0_fp +
+     &             AERLIQ(10)*36.5e+0_fp ) / 2.2e+3_fp +
+     &           ( AERLIQ(13)*40e+0_fp + AERLIQ(14)*39e+0_fp +
+     &             AERLIQ(15)*24e+0_fp ) / 2.5e+3_fp +
+     &           AERLIQ(8)*18e+0_fp / 1.e+3_fp )
+
+         IF ( AERLIQ(8) < 1e-18_fp .or. WVF <= 0.25e+0_fp ) THEN
             ! Aerosol is dry so HPLUSTEMP and PH_SAV are undefined
             ! We force HPLUSTEMP to 1d20 and PH_SAV to -999e+0_fp.
             ! (hotp, ccc, 12/18/09)
@@ -741,7 +767,8 @@
             SULFTEMP        = 1e-30_fp
             BISULTEMP       = 1e-30_fp
             NITRTEMP        = 1e-30_fp
-            State_Chm%pHSav(I,J,L) = -999e+0_fp
+            State_Chm%pHSav(I,J,L) = 0.0e+0_fp
+            State_Chm%HSALW(I,J,L) = 0.0e+0_fp
          ELSE
             HPLUSTEMP       = AERLIQ(1) / AERLIQ(8) * 1e+3_fp/18e+0_fp
             SULFTEMP        = AERLIQ(5) / AERLIQ(8) * 1e+3_fp/18e+0_fp
@@ -750,6 +777,7 @@
 
             ! Use SAFELOG10 to prevent NAN
             State_Chm%pHSav(I,J,L) = -1e+0_fp * SAFELOG10( HPLUSTEMP )
+            State_Chm%HSALW(I,J,L) = 1.0e+0_fp
          ENDIF
 
          ! Additional Info

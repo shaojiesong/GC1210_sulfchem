@@ -3101,6 +3101,7 @@
       REAL(fp), POINTER     :: pHCloud(:,:,:)
       REAL(fp), POINTER     :: ISCloud(:,:,:) ! SJS
       REAL(fp), POINTER     :: HSCloud(:,:,:) ! SJS 20190701
+      REAL(fp), POINTER     :: WCCloud(:,:,:) ! SJS 20191128
       REAL(fp), POINTER     :: SSAlk(:,:,:,:)
       REAL(fp), POINTER     :: H2O2s(:,:,:)
       REAL(fp), POINTER     :: SO2s(:,:,:)
@@ -3130,6 +3131,7 @@
       ! Point to chemical species array [v/v dry]
       Spc         => State_Chm%Species
       pHCloud     => State_Chm%pHCloud
+      WCCloud     => State_Chm%WCCloud ! SJS 20191128
       ISCloud     => State_Chm%ISCloud ! SJS
       HSCloud     => State_Chm%HSCloud ! SJS 20190701
       SSAlk       => State_Chm%SSAlk
@@ -3140,6 +3142,7 @@
       pHCloud(:,:,:) = 4.5e+0_fp
       ISCloud(:,:,:) = 0.0e+0_fp ! SJS
       HSCloud(:,:,:) = 0.0e+0_fp ! SJS 20190701
+      WCCloud(:,:,:) = 0.0e+0_fp ! SJS 20191128
 
       ! DTCHEM is the chemistry timestep in seconds
       DTCHEM   = GET_TS_CHEM()
@@ -3455,6 +3458,9 @@
      &             1e-3_fp
          ENDIF
          LWC     = MAX(0.d0, LWC)
+
+         ! Store grid-box average LWC
+         WCCloud(I,J,L) = LWC ! SJS 20191128
 
          ! LWC is a grid-box averaged quantity. To improve the representation 
          ! of sulfate chemistry, we divide LWC by the cloud fraction and 
@@ -4886,6 +4892,7 @@
       pHCloud => NULL()
       ISCloud => NULL() ! SJS
       HSCloud => NULL() ! SJS 20190701
+      WCCloud => NULL() ! SJS 20191128
       SSAlk   => NULL()
       H2O2s   => NULL()
       SO2s    => NULL()

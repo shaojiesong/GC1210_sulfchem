@@ -133,6 +133,7 @@ MODULE State_Chm_Mod
      REAL(fp),          POINTER :: pHCloud    (:,:,:  ) ! Cloud pH [-]
      REAL(fp),          POINTER :: ISCloud    (:,:,:  ) ! Cloud IS [M] SJS
      REAL(fp),          POINTER :: HSCloud    (:,:,:  ) ! Cloud presence [-] SJS
+     REAL(fp),          POINTER :: WCCloud    (:,:,:  ) ! Cloud LWC [m3/m3] SJS
 
      !----------------------------------------------------------------------
      ! Fields for KPP solver
@@ -152,6 +153,7 @@ MODULE State_Chm_Mod
      ! For isoprene SOA via ISORROPIA
      !----------------------------------------------------------------------
      REAL(fp),          POINTER :: pHSav      (:,:,:  ) ! ISORROPIA aerosol pH
+     REAL(fp),          POINTER :: HSALW      (:,:,:  ) ! ALW presence [-] SJS
      REAL(fp),          POINTER :: HplusSav   (:,:,:  ) ! H+ concentration [M]
      REAL(fp),          POINTER :: WaterSav   (:,:,:  ) ! ISORROPIA aerosol H2O
      REAL(fp),          POINTER :: SulRatSav  (:,:,:  ) ! Sulfate conc [M]
@@ -423,6 +425,7 @@ CONTAINS
 
     ! Isoprene SOA
     State_Chm%pHSav         => NULL()
+    State_Chm%HSALW         => NULL() !SJS
     State_Chm%HplusSav      => NULL()
     State_Chm%WaterSav      => NULL()
     State_Chm%SulRatSav     => NULL()
@@ -441,6 +444,7 @@ CONTAINS
     State_Chm%pHCloud       => NULL()
     State_Chm%ISCloud       => NULL() !SJS
     State_Chm%HSCloud       => NULL() !SJS
+    State_Chm%WCCloud       => NULL() !SJS
     State_Chm%SSAlk         => NULL()
 
     ! Fields for sulfate chemistry
@@ -1110,6 +1114,19 @@ CONTAINS
        IF ( RC /= GC_SUCCESS ) RETURN
 
        !--------------------------------------------------------------------
+       ! HSALW SJS
+       !--------------------------------------------------------------------
+       chmId = 'HSALW'
+       ALLOCATE( State_Chm%HSALW( IM, JM, LM ), STAT=RC )
+       CALL GC_CheckVar( 'State_Chm%HSALW', 0, RC )
+       IF ( RC /= GC_SUCCESS ) RETURN
+       State_Chm%HSALW = 0.0_fp
+       CALL Register_ChmField( am_I_Root, chmID, State_Chm%HSALW,          &
+                               State_Chm, RC                                )
+       CALL GC_CheckVar( 'State_Chm%HSALW', 1, RC )
+       IF ( RC /= GC_SUCCESS ) RETURN
+
+       !--------------------------------------------------------------------
        ! HplusSav
        !--------------------------------------------------------------------
        chmID  = 'HplusSav'
@@ -1198,6 +1215,19 @@ CONTAINS
        CALL Register_ChmField( am_I_Root, chmID, State_Chm%pHCloud,          &
                                State_Chm, RC                                )
        CALL GC_CheckVar( 'State_Chm%pHCloud', 1, RC )
+       IF ( RC /= GC_SUCCESS ) RETURN
+
+       !--------------------------------------------------------------------
+       ! WCCloud
+       !--------------------------------------------------------------------
+       chmId = 'WCCloud'
+       ALLOCATE( State_Chm%WCCloud( IM, JM, LM ), STAT=RC )
+       CALL GC_CheckVar( 'State_Chm%WCCloud', 0, RC )
+       IF ( RC /= GC_SUCCESS ) RETURN
+       State_Chm%WCCloud = 0.0_fp
+       CALL Register_ChmField( am_I_Root, chmID, State_Chm%WCCloud,          &
+                               State_Chm, RC                                )
+       CALL GC_CheckVar( 'State_Chm%WCCloud', 1, RC )
        IF ( RC /= GC_SUCCESS ) RETURN
 
        !--------------------------------------------------------------------
@@ -1882,6 +1912,14 @@ CONTAINS
 
     ENDIF
 
+    ! SJS 20191129
+    IF ( ASSOCIATED( State_Chm%HSALW ) ) THEN
+       DEALLOCATE( State_Chm%HSALW, STAT=RC )
+       CALL GC_CheckVar( 'State_Chm%HSALW', 2, RC )
+       IF ( RC /= GC_SUCCESS ) RETURN
+       State_Chm%HSALW => NULL()
+    ENDIF
+
     IF ( ASSOCIATED( State_Chm%HplusSav ) ) THEN
        DEALLOCATE( State_Chm%HplusSav, STAT=RC )
        CALL GC_CheckVar( 'State_Chm%HplusSav', 2, RC )
@@ -1929,6 +1967,14 @@ CONTAINS
        CALL GC_CheckVar( 'State_Chm%pHCloud', 2, RC )
        IF ( RC /= GC_SUCCESS ) RETURN
        State_Chm%pHCloud => NULL()
+    ENDIF
+
+    ! SJS 20191128
+    IF ( ASSOCIATED( State_Chm%WCCloud ) ) THEN
+       DEALLOCATE( State_Chm%WCCloud, STAT=RC )
+       CALL GC_CheckVar( 'State_Chm%WCCloud', 2, RC )
+       IF ( RC /= GC_SUCCESS ) RETURN
+       State_Chm%WCCloud => NULL()
     ENDIF
 
     ! SJS 20190605
@@ -2659,6 +2705,11 @@ CONTAINS
           IF ( isUnits ) Units = '1'
           IF ( isRank  ) Rank  = 3
 
+       CASE( 'HSALW'   ) ! SJS 20191129
+          IF ( isDesc  ) Desc  = 'ALWC presence'
+          IF ( isUnits ) Units = '1'
+          IF ( isRank  ) Rank  =  3
+
        CASE( 'HPLUSSAV' )
           IF ( isDesc  ) Desc  = 'ISORROPIA H+ concentration'
           IF ( isUnits ) Units = 'mol/L'
@@ -2693,6 +2744,11 @@ CONTAINS
        CASE( 'PHCLOUD' )
           IF ( isDesc  ) Desc  = 'Cloud pH'
           IF ( isUnits ) Units = '1'
+          IF ( isRank  ) Rank  =  3
+
+       CASE( 'WCCLOUD' ) ! SJS 20191128
+          IF ( isDesc  ) Desc  = 'Cloud LWC'
+          IF ( isUnits ) Units = 'm3/m3'
           IF ( isRank  ) Rank  =  3
 
        CASE( 'ISCLOUD' ) ! SJS
