@@ -3459,9 +3459,6 @@
          ENDIF
          LWC     = MAX(0.d0, LWC)
 
-         ! Store grid-box average LWC
-         WCCloud(I,J,L) = LWC ! SJS 20191128
-
          ! LWC is a grid-box averaged quantity. To improve the representation 
          ! of sulfate chemistry, we divide LWC by the cloud fraction and 
          ! compute sulfate chemistry based on the LWC within the cloud.  We 
@@ -3690,6 +3687,9 @@
             pHCloud(I,J,L) = -1.0e+0_fp * log10(HPLUS)
             ISCloud(I,J,L) = IonStr ! SJS
             HSCloud(I,J,L) = 1.0e+0_fp ! SJS 20190701
+
+            ! Store grid-box average LWC
+            WCCloud(I,J,L) = LWC*FC ! SJS 20191203
 
             ! SJS 20190102
             ! IF ( Input_Opt%LMETALCATSO2 ) THEN
