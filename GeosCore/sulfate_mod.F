@@ -3504,7 +3504,8 @@
          ! If (1) there is cloud, (2) there is SO2 present, and 
          ! (3) the T > -15 C, then compute aqueous SO2 chemistry
          ! Prevent divide-by-zero if LWC=0 (mpayer, 9/6/13)
-         IF ( ( FC     > 0.e+0_fp   )  .AND. 
+         ! Follw Chris Holmes set up for FC > 0.0001, SJS 20200120
+         IF ( ( FC     > 1.e-4_fp   )  .AND.
      &        ( SO2_ss > MINDAT )  .AND. 
      &        ( TK     > 258.0  )  .AND.
      &        ( LWC    > 0.e+0_fp   ) ) THEN
