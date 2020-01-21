@@ -3057,6 +3057,7 @@
       REAL(fp)              :: ATNH3, ATNO3, XRH, TNO2, TSO2      ! SJS
       REAL(fp)              :: ALWC, AHPLUS, AIonStr, AWVF        ! SJS
       REAL(fp)              :: SRhcho, L6, L6S, L7S, f_sro3       ! SJS
+      REAL(fp)              :: TauC, WTAREA, XMMS, DFKG           ! SJS
       REAL(fp)              :: HPLUS, SO4nss, TNH3, TNO3, GNO3, ANIT
       REAL(fp)              :: LSTOT,  ALKdst, ALKss,  ALKds, NH3
       REAL(fp)              :: LSTOT1, LSTOT2                     ! SJS 
@@ -3215,6 +3216,7 @@
 !$OMP+PRIVATE( Fe_d_ant, Fe_d_nat                                      )
 !$OMP+PRIVATE( Mn_d_ant, Mn_d_nat, KHCHO2, HCHCHO                      ) !SJS
 !$OMP+PRIVATE( LSTOT1, LSTOT2                                          ) !SJS
+!$OMP+PRIVATE( TauC, WTAREA, XMMS, DFKG                                ) !SJS
 !$OMP+SCHEDULE( DYNAMIC )
       DO L = 1, LLPAR 
       DO J = 1, JJPAR
@@ -3509,6 +3511,28 @@
      &        ( SO2_ss > MINDAT )  .AND. 
      &        ( TK     > 258.0  )  .AND.
      &        ( LWC    > 0.e+0_fp   ) ) THEN
+
+            !===========================================================
+            ! SJS 20200121
+            ! NOTE...Estimate entrainment limitation
+            ! WTAREA = [m2 cloud water sfc area m-3 air]
+            ! LWC = [m3 H2O / m3 air]
+            ! a = 10 [um] = 1e-5 [m]
+            WTAREA = 3.e+0_fp * LWC / 1.e-5_fp
+
+            ! XMMS = Mean molecular speed [cm/s]
+            ! MW_SO2 = 64 [g/mol]
+            XMMS = SQRT( 2.117e+8_fp * TK / 64e+0_fp )
+
+            ! DFKG = Gas phase diffusion coeff [cm2/s]
+            ! State_Met%AIRNUMDEN = dry air number density [molec/cm3]
+            DFKG = 9.45e+17_fp / State_Met%AIRNUMDEN(I,J,L) *
+     &             SQRT(TK) * SQRT(3.472e-2_fp+(1.e+0_fp/64e+0_fp))
+
+            ! Calculate Kinetic Limitation (lifetime ~ s)
+            TauC = (1.e+0_fp-FC)*3.6e+3_fp +
+     &             1.e-5_fp/WTAREA/(DFKG/1.e+4_fp) +
+     &             4.e+0_fp/WTAREA/(XMMS/1.e+2_fp)/2.3e-1_fp
 
             !===========================================================
             ! NOTE...Sulfate production from aquatic reactions of SO2 
