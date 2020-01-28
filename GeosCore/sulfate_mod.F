@@ -3507,10 +3507,11 @@
          ! (3) the T > -15 C, then compute aqueous SO2 chemistry
          ! Prevent divide-by-zero if LWC=0 (mpayer, 9/6/13)
          ! Follw Chris Holmes set up for FC > 0.0001, SJS 20200120
+         ! LWC>1e-12 [m3 H2O m-3 air] == 1 [ug H2O/m3 air], SJS 20200128
          IF ( ( FC     > 1.e-4_fp   )  .AND.
      &        ( SO2_ss > MINDAT )  .AND. 
      &        ( TK     > 258.0  )  .AND.
-     &        ( LWC    > 0.e+0_fp   ) ) THEN
+     &        ( LWC    > 1.e-12_fp   ) ) THEN
 
             !===========================================================
             ! SJS 20200121
