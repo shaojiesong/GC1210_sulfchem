@@ -782,7 +782,8 @@ MODULE GCKPP_HETRATES
                              brConc_Cld, HSO3conc_Cld, SO3conc_Cld )
 
          ! Make sure sulfate produced is less than SO2 available (qjc, 06/20/16)
-         HET(ind_HOBr,  6) = kITemp * fupdateHOBr
+         ! Change to Zero SJS 20200201
+         HET(ind_HOBr,  6) = kITemp * 0.e+0_fp
 
          !----------------------------------------------------------------
          ! HOBr + SO3--(aq) (QJC index: EhcSOHOBCld)
@@ -793,7 +794,8 @@ MODULE GCKPP_HETRATES
                              brConc_Cld, HSO3conc_Cld, SO3conc_Cld )
 
          ! Make sure sulfate produced is less than SO2 available (qjc, 06/20/16)
-         HET(ind_HOBr,  7) = kITemp * fupdateHOBr
+         ! Change to Zero SJS 20200201
+         HET(ind_HOBr,  7) = kITemp * 0.e+0_fp
 
          !----------------------------------------------------------------
          ! ClNO3 + BrSALA/C (TMS index: hhc10/11)

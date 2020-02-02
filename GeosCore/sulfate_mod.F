@@ -3229,6 +3229,13 @@
          LSTOT2   = 0.0_fp
          LSTOT    = 0.0_fp
 
+         ! Now calculate HOBr+SO2 in sulfate module
+         ! SJS 20200201
+         ! This is the ratio used to calculate the actual removal of
+         ! HOBr by SO2 for use in gckpp_HetRates.F90 (qjc, 06/20/16)
+         fupdateHOBr_0 = 0.e+0_fp ! HOBr
+         State_Chm%fupdateHOBr(I,J,L) = fupdateHOBr_0
+
          ! Skip non-chemistry boxes
          IF ( .not. State_Met%InChemGrid(I,J,L) ) CYCLE
 
@@ -4111,13 +4118,11 @@
             ! make sure sulfate produced is less than SO2 available
             ! (qjc, 06/20/16)
             IF (L5S > SO2_ss) THEN
-               fupdateHOBr_0 = 1.e+0_fp * SO2_ss/L5S
                L5S   = SO2_ss
                L5S_1 = SO2_ss * L5S_1/L5S
             ELSE
                L5S = L5S
                L5S_1 = L5S_1
-               fupdateHOBr_0 = 1.e+0_fp
             ENDIF
 
             ! SJS 20190708
@@ -4132,7 +4137,6 @@
                L9S   = 0.e+0_fp ! NO2
                L5S   = 0.e+0_fp
                L5S_1 = 0.e+0_fp
-               fupdateHOBr_0 = 0.e+0_fp ! HOBr
             ENDIF
 
             ! SJS 20190610
@@ -4162,11 +4166,6 @@
                L3S_1 = SO2_ss * FC * L3S_1 / LSTOT0
                L5S_1 = SO2_ss * FC * L5S_1 / LSTOT0
 
-               ! This is the ratio used to calculate the actual removal of
-               ! HOBr by SO2 for use in gckpp_HetRates.F90 (qjc, 06/20/16)
-               State_Chm%fupdateHOBr(I,J,L) = fupdateHOBr_0 *
-     &                                        SO2_ss / LSTOT0
-
             ELSE
 
                L2S   = L2S * FC
@@ -4178,10 +4177,6 @@
                L9S   = L9S * FC !SJS
                L3S_1 = L3S_1 * FC
                L5S_1 = L5S_1 * FC
-
-               ! This is the ratio used to calculate the actual removal of
-               ! HOBr by SO2 (feedback to ehc_mod.f) (qjc, 06/20/16)
-               State_Chm%fupdateHOBr(I,J,L) = fupdateHOBr_0
 
             ENDIF
 
@@ -4454,10 +4449,6 @@
             ! Avoid divide-by-zero errors
             State_Chm%HSO3_AQ(I,J,L)     = 1.0e-32_fp
             State_Chm%SO3_AQ(I,J,L)      = 1.0e-32_fp
-
-            ! This is the ratio used to calculate the actual removal of
-            ! HOBr by SO2 for use in gckpp_HetRates.F90 (qjc, 06/20/16)
-            State_Chm%fupdateHOBr(I,J,L) = 0.e+0_fp
 
          ENDIF
 
