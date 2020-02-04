@@ -302,7 +302,7 @@
       INTEGER                :: id_HCHO !,id_SO4aq SJS
       INTEGER                :: id_SO4d1,  id_SO4d2,  id_SO4d3 
       INTEGER                :: id_SO4d4,  id_SO4s,   id_pFe
-      INTEGER                :: id_HOBr,   id_SO4H1,  id_SO4H2
+      INTEGER                :: id_HOBr
       INTEGER                :: id_SO4P1,  id_SO4P2,  id_SO4P3 !SJS
       INTEGER                :: id_SO4P4,  id_SO4P5,  id_SO4P6 !SJS 
       INTEGER                :: id_SO4P7,  id_HCOOH,  id_ACTA !SJS 
@@ -3044,7 +3044,7 @@
       REAL(fp)              :: F1,     RK1,     RK2,    RK3,  SO20
       REAL(fp)              :: SO2_cd, H2O20,   O3,     L2S,  L3S
       REAL(fp)              :: LWC,    KaqH2O2, KaqO3,  PATM
-      REAL(fp)              :: KaqHCHO, KdHMSA, HCHO0 ! SJS
+      REAL(fp)              :: KaqHOBr, KaqHCHO, KdHMSA, HCHO0 ! SJS
       REAL(fp)              :: KaqHONO, KaqNO2, HONO0, NO20 ! SJS 20190708
       REAL(fp)              :: L8, L9, L8S, L9S ! SJS 20190708
       REAL(fp)              :: ALK,    ALK1,    ALK2,    SO2_ss
@@ -3068,10 +3068,10 @@
       !tdf
       REAL(fp)              :: H2SO4_cd,  H2SO4_gas
 
-      REAL(fp)              :: L5S,SRo3,SRhobr            !(qjc, 04/10/16) 
-      REAL(fp)              :: L5S_1,L3_1,L3S_1,KaqO3_1 !(qjc, 04/10/16) 
+      REAL(fp)              :: L5S,SRo3,SRhobr            !(qjc, 04/10/16)
+      REAL(fp)              :: KaqO3_1 !(qjc, 04/10/16)
       REAL(fp)              :: HSO3aq, SO3aq                 !(qjc, 06/10/16) 
-      REAL(fp)              :: SO4H1_vv, SO4H2_vv, LSTOT0    !(qjc, 06/20/16) 
+      REAL(fp)              :: LSTOT0    !(qjc, 06/20/16)
       REAL(fp)              :: rSIV, fupdateHOBr_0  !(qjc, 06/20/16) 
       REAL(fp)              :: HCO3,HCHOBr,KO3,KHOBr,f_srhobr,HOBr0  !(qjc, 01/31/17) 
       REAL(fp)              :: HCHCHO, KHCHO2, HMSA0, HMSC0, HMSP0 ! SJS
@@ -3193,7 +3193,7 @@
 !$OMP+DEFAULT( SHARED )
 !$OMP+PRIVATE( I, J, L, SO20, H2O20, O3, PATM, TK, K0, M, KK, F1, RK1  )
 !$OMP+PRIVATE( RK2, RK, RKT, SO2_cd, L1, Ld, L2, L2S, L3, L3S, FC, LWC )
-!$OMP+PRIVATE( KaqH2O2, KaqO3, ALK, ALK1, ALK2, KaqHCHO                ) !SJS
+!$OMP+PRIVATE( KaqH2O2, KaqO3, ALK, ALK1, ALK2, KaqHCHO, KaqHOBr       ) !SJS
 !$OMP+PRIVATE( KaqHONO, KaqNO2, HONO0, NO20, L8, L9, L8S, L9S          ) !SJS
 !$OMP+PRIVATE( KdHMSA, L6, L6S, L7S, HCHO0, HMSA0, HMSC0, HMSP0        ) !SJS
 !$OMP+PRIVATE( Kt1, Kt2, AREASS1, AREASS2, SO2_ss, Kt1N, Kt2N          )
@@ -3208,8 +3208,8 @@
 !$OMP+PRIVATE( KTH, H2SO4_cd, H2SO4_gas, Ki                            ) !tdf
 !$OMP+PRIVATE( IBIN, PSO4d_tot, PH2SO4d_tot, PNITd_tot, ALKA_d         )
 !$OMP+PRIVATE( L5S, SRo3, SRhobr, SRhcho, f_sro3                   ) !SJS
-!$OMP+PRIVATE( L3_1, L3S_1,KaqO3_1, L5S_1,HSO3aq,SO3aq           ) !qjc
-!$OMP+PRIVATE( SO4H1_vv, SO4H2_vv, LSTOT0, rSIV,fupdateHOBr_0          ) !qjc
+!$OMP+PRIVATE( KaqO3_1, HSO3aq,SO3aq           ) !qjc
+!$OMP+PRIVATE( LSTOT0, rSIV,fupdateHOBr_0          ) !qjc
 !$OMP+PRIVATE( HCO3, HCHOBr, KO3, KHOBr, f_srhobr, HOBr0, TMP          ) !qjc
 !$OMP+PRIVATE( L4,    L4S,     KaqO2,  DUST, Mn_ant, Mn_nat, Mn_tot    )
 !$OMP+PRIVATE( Fe_ant, Fe_nat, Fe_tot, Fe_d, Mn_d,   FeIII,  MnII      )
@@ -3479,6 +3479,7 @@
          ! Zero variables
          KaqH2O2 = 0.e+0_fp
          KaqHCHO = 0.e+0_fp ! SJS 20190608
+         KaqHOBr = 0.e+0_fp ! SJS 20200201
          KdHMSA  = 0.e+0_fp
          KHCHO2  = 0.e+0_fp
          KaqO3   = 0.e+0_fp
@@ -3488,17 +3489,14 @@
          KaqO2   = 0.e+0_fp
          L2      = 0.e+0_fp
          L3      = 0.e+0_fp
-         L3_1    = 0.e+0_fp !(qjc, 04/10/16)
          L4      = 0.e+0_fp
          L6      = 0.e+0_fp ! SJS 20190610
          L8      = 0.e+0_fp ! SJS 20190708
          L9      = 0.e+0_fp
          L2S     = 0.e+0_fp
          L3S     = 0.e+0_fp
-         L3S_1   = 0.e+0_fp !(qjc, 04/10/16)
          L4S     = 0.e+0_fp
          L5S     = 0.e+0_fp !(qjc, 04/10/16)
-         L5S_1   = 0.e+0_fp !(qjc, 04/10/16)   
          L6S     = 0.e+0_fp
          L7S     = 0.e+0_fp
          L8S     = 0.e+0_fp
@@ -3839,7 +3837,7 @@
      &                       HPLUS, IonStr,  MnII,    FeIII,
      &                       KaqH2O2, KaqO3, KaqO3_1, KaqO2,
      &                       KaqHCHO, KdHMSA,
-     &                       KaqHONO, KaqNO2,
+     &                       KaqHONO, KaqNO2, KaqHOBr,
      &                       HSO3aq,  SO3aq,
      &                       KHCHO2 ) 
 
@@ -4029,39 +4027,6 @@
                ENDIF
             ENDIF
 
-            !(qjc, 04/10/16)
-            !----------------------------------------------------------
-            ! Compute loss by O3, but SO3-- only.  Prevent floating-point
-            ! exception by not allowing the exponential to go to infinity
-            ! if the argument is too large. 
-            !----------------------------------------------------------
-
-            ! Argument of the exponential
-            XX = ( SO2_ss - O3 ) * KaqO3_1 * DTCHEM 
-
-            ! Test if EXP(XX) can be computed w/o numerical exception
-            IF ( IS_SAFE_EXP( XX ) .and. ABS( XX ) > 0e+0_fp ) THEN
-
-               ! Aqueous phase SO2 loss rate w/ O3 [v/v/timestep]
-               L3_1  = EXP( XX )
-
-               ! Loss by O3
-               L3S_1 = SO2_ss * O3*(L3_1 - 1.e+0_fp)/((SO2_ss*L3_1)-O3)  
-
-            ELSE
- 
-               ! Follow the same logic for L3S_1 as described in
-               ! Jintai Lin's note above
-               IF ( XX > 0.e+0_fp ) THEN 
-                  L3S_1 = O3 
-               ELSE IF ( XX < 0.e+0_fp) THEN
-                  L3S_1 = SO2_ss 
-               ELSE
-                  !(qjc, 04/10/16) different solution when SO2_ss = O3
-                  L3S_1 = SO2_ss - 1/(KaqO3_1*DTCHEM+1/SO2_ss)
-               ENDIF
-            ENDIF 
-
             IF ( Input_Opt%LMETALCATSO2 ) THEN
 
                !--------------------------------------------------------
@@ -4098,31 +4063,28 @@
             ! the argument is too large. !qjc (04/05/16)
             !----------------------------------------------------------
 
-            ! Get SO4H (sulfate produced via HOBr) from the Spc array [v/v dry]
-            IF ( IS_FULLCHEM ) THEN
-               SO4H1_vv = Spc(I,J,L,id_SO4H1)
-               SO4H2_vv = Spc(I,J,L,id_SO4H2)
+            ! Argument of the exponential
+            XX = ( SO2_ss - HOBr0 ) * KaqHOBr * DTCHEM
+
+            ! Test if EXP(XX) can be computed w/o numerical exception
+            IF ( IS_SAFE_EXP( XX ) .and. ABS( XX ) > 0e+0_fp ) THEN
+
+               ! Loss by HOBr
+               L5S = SO2_ss * HOBr0 * ( EXP(XX) - 1.e+0_fp ) /
+     &               ( (SO2_ss * EXP(XX)) - HOBr0 )
+
             ELSE
-               SO4H1_vv = 0.e+0_fp
-               SO4H2_vv = 0.e+0_fp
-            ENDIF
 
-            L5S   = SO4H1_vv + SO4H2_vv
-            L5S_1 = SO4H2_vv
-
-            ! SJS 20190610
-            ! do not multiply by FC if it is not divided by FC at the begining
-            L5S   = L5S / FC
-            L5S_1 = L5S_1 / FC
-
-            ! make sure sulfate produced is less than SO2 available
-            ! (qjc, 06/20/16)
-            IF (L5S > SO2_ss) THEN
-               L5S   = SO2_ss
-               L5S_1 = SO2_ss * L5S_1/L5S
-            ELSE
-               L5S = L5S
-               L5S_1 = L5S_1
+               ! Follow the same logic for L2S as described in
+               ! Jintai Lin's note above
+               IF ( XX > 0.e+0_fp ) THEN
+                  L5S = HOBr0
+               ELSE IF ( XX < 0.e+0_fp) THEN
+                  L5S = SO2_ss
+               ELSE
+                  !(qjc, 04/10/16) different solution when SO2 = HOBr
+                  L5S = SO2_ss - 1/(KaqHOBr*DTCHEM+1/SO2_ss)
+               ENDIF
             ENDIF
 
             ! SJS 20190708
@@ -4136,7 +4098,6 @@
                L9    = 0.e+0_fp
                L9S   = 0.e+0_fp ! NO2
                L5S   = 0.e+0_fp
-               L5S_1 = 0.e+0_fp
             ENDIF
 
             ! SJS 20190610
@@ -4163,8 +4124,6 @@
                L6S   = SO2_ss * FC * L6S   / LSTOT0 !SJS
                L8S   = SO2_ss * FC * L8S   / LSTOT0 !SJS
                L9S   = SO2_ss * FC * L9S   / LSTOT0 !SJS
-               L3S_1 = SO2_ss * FC * L3S_1 / LSTOT0
-               L5S_1 = SO2_ss * FC * L5S_1 / LSTOT0
 
             ELSE
 
@@ -4175,8 +4134,6 @@
                L6S   = L6S * FC !SJS
                L8S   = L8S * FC !SJS
                L9S   = L9S * FC !SJS
-               L3S_1 = L3S_1 * FC
-               L5S_1 = L5S_1 * FC
 
             ENDIF
 
@@ -4369,13 +4326,13 @@
                ! And HCHO (M atm-1), SJS 20190608
                HCO3   = 1.13e-2_fp * EXP( 8.51e+0_fp *
      &                  ( 298.15e+0_fp / TK - 1.e+0_fp ) )
-               HCHOBr = 1.3e+3_fp        
+               HCHOBr = 1.3e+2_fp
                HCHCHO = 2.5e+0_fp *
      &         EXP(3.3e+3_fp*((1.e+0_fp/TK)-(1.e+0_fp/298.e+0_fp)))
 
                ! Rate coefficient (M-1 s-1)
                KO3   = 7.32e+14_fp * EXP( -4.03e+3_fp / TK ) ! for O3+SO3
-               KHOBr = 5.0e+9_fp                            ! for HOBr+SO3
+               KHOBr = 1.2e+9_fp                            ! for HOBr+SO3
 
                ! Make sure we don't divide by zero (ckeller, 1/25/18) 
                TMP = KHOBr*HOBr0*HCHOBr + KO3*O3*HCO3 + 
@@ -4430,10 +4387,8 @@
             ! Otherwise, don't do aqueous chemistry
             L2S          = 0.e+0_fp
             L3S          = 0.e+0_fp
-            L3S_1        = 0.e+0_fp !(qjc, 11/04/16)
             L4S          = 0.e+0_fp
             L5S          = 0.e+0_fp !(qjc, 11/04/16)
-            L5S_1        = 0.e+0_fp !(qjc, 11/04/16)
             L6S          = 0.e+0_fp !SJS 20190609
             L7S          = 0.e+0_fp !SJS 20190610
             L8S          = 0.e+0_fp !SJS 20190708
@@ -4563,8 +4518,6 @@
             L6S   = SO2_ss * L6S   / LSTOT1
             L8S   = SO2_ss * L8S   / LSTOT1
             L9S   = SO2_ss * L9S   / LSTOT1
-            L3S_1 = SO2_ss * L3S_1 / LSTOT1
-            L5S_1 = SO2_ss * L5S_1 / LSTOT1
             LH1S  = SO2_ss * LH1S  / LSTOT1
             LH3S  = SO2_ss * LH3S  / LSTOT1
             SR    = SO2_ss * SR    / LSTOT1
@@ -4593,6 +4546,7 @@
          HONO0  = MAX( HONO0 - L8S + 2.e+0_fp*L9S, MINDAT )
          NO20   = MAX( NO20 - 2.e+0_fp*L9S, MINDAT )
          HCHO0  = MAX( HCHO0 + L7S-L6S-SRhcho + LH2S-LH3S, MINDAT )
+         HOBr0  = MAX( HOBr0 - L5S, MINDAT )
 
          ! Update SO2 level, save SO2[ppv], H2O2[ppv] for WETDEP, SJS 20190801
          SO2s( I,J,L) = SO2_ss
@@ -4603,12 +4557,10 @@
             Spc(I,J,L,id_SO2)  = SO2_ss
             Spc(I,J,L,id_H2O2) = H2O20
             Spc(I,J,L,id_HCHO) = HCHO0 !SJS 20190610
+            Spc(I,J,L,id_HOBr) = HOBr0 !SJS 20200201
             Spc(I,J,L,id_HONO) = HONO0 !SJS 20190708
             Spc(I,J,L,id_NO2)  = NO20  !SJS 20190708
 
-            ! Set SO4H1 and SO4H2 to zero at end of each timestep
-            IF ( id_SO4H1 > 0 ) Spc(I,J,L,id_SO4H1) = 0.0e+0_fp
-            IF ( id_SO4H2 > 0 ) Spc(I,J,L,id_SO4H2) = 0.0e+0_fp
          End If
 
          ! SO2 chemical loss rate  = SO4 production rate [v/v/timestep]
@@ -4752,7 +4704,7 @@
 
             ! P(SO4) by o3s
             AD05(I,J,L,19) = AD05(I,J,L,19) +
-     &                       (L3S_1*State_Met%AD(I,J,L)/TCVV_S)
+     &                       (0.e+0_fp*State_Met%AD(I,J,L)/TCVV_S)
 
             ! Cloud pH
             AD05(I,J,L,20) = AD05(I,J,L,20) + HPLUS
@@ -4851,7 +4803,7 @@
             ! P(SO4) by o3s [kg S/s]
             IF ( State_Diag%Archive_ProdSO4fromO3s ) THEN
                State_Diag%ProdSO4fromO3s(I,J,L) = 
-     &            ( L3S_1 * State_Met%AD(I,J,L) / TCVV_S ) / DTCHEM
+     &            ( 0.e+0_fp * State_Met%AD(I,J,L) / TCVV_S ) / DTCHEM
             ENDIF
 
             ! SJS 20190102
@@ -7905,7 +7857,7 @@
      &                       Hplus, Ionstr,  MnII,  FeIII, 
      &                       KaqH2O2, KaqO3, KaqO3_1, KaqO2,
      &                       KaqHCHO, KdHMSA, ! SJS 20190607
-     &                       KaqHONO, KaqNO2, ! SJS 20190708
+     &                       KaqHONO, KaqNO2, KaqHOBr, ! SJS 20190708
      &                       HSO3aq,  SO3aq,
      &                       KHCHO2 )
 !
@@ -7930,6 +7882,7 @@
       REAL(fp), INTENT(OUT) :: KaqHCHO ! Reaction rate for HCHO [v/v/s] (SJS 20190607)
       REAL(fp), INTENT(OUT) :: KaqNO2  ! Reaction rate for NO2  [v/v/s] (SJS 20190708)
       REAL(fp), INTENT(OUT) :: KaqHONO ! Reaction rate for HONO [v/v/s] (SJS 20190708)
+      REAL(fp), INTENT(OUT) :: KaqHOBr ! Reaction rate for HOBr [v/v/s] (SJS 20200201)
       REAL(fp), INTENT(OUT) :: KdHMSA  ! Decomposition [/s] (SJS 20190608)
       REAL(fp), INTENT(OUT) :: KaqO2   ! Reaction rate for O2 (metal cat)
       REAL(fp), INTENT(OUT) :: HSO3aq  ! Cloud bisulfite [mol/l] (qjc, 06/10/16)
@@ -8141,6 +8094,26 @@
       !(qjc, 04/10/16)
       KaqO3_1 = KO2*XSO3 * FHCSO2 * XSO2g
      &      * P * HCO3 * XO3g * LWC * R * T   ! [v/v/s]
+
+      !=================================================================
+      !  Aqueous reactions of SO2 with HOBr, SJS 20200201
+      !  [v/v/s]
+      !  HSO3 + HOBr -> SO4 ! K1 = 3.2e+9_fp
+      !   SO3 + HOBr -> SO4 ! K2 = 5.0e+9_fp
+      !   Henry's Law Constant = 1.3e+2_fp [M/atm]
+      !=================================================================
+
+      ! Note: the reaction between HSO3- and HOBr seems to be wrong
+      ! given the thesis by Liu 2000
+      ! I correct the reaction rate between SO32- and HOBr to dilute
+      ! condition, the experiment is for ionic strength of 0.5 M
+      ! SJS 20200204
+!      KaqHOBr = (3.2e+9_fp*XHSO3 + 5.0e+9_fp*XSO3) * FHCSO2 * XSO2g
+!      KaqHOBr = 5.0e+9_fp*XSO3 * FHCSO2 * XSO2g
+      KaqHOBr = 1.2e+9_fp*XSO3 * FHCSO2 * XSO2g
+     &      * P * LWC * R * T
+     &      * 1.3e+2_fp
+     &      * 1.e+0_fp / ( 1.e+0_fp + ( 1.3e+2_fp * R * T * LWC ) )
 
       !=================================================================
       !  Aqueous reactions of SO2 with HCHO, SJS 20190607
@@ -10530,8 +10503,6 @@
       id_SO4d3 = Ind_('SO4D3'    )
       id_SO4d4 = Ind_('SO4D4'    )
       id_SO4s  = Ind_('SO4s'     )
-      id_SO4H1 = Ind_('SO4H1'    )
-      id_SO4H2 = Ind_('SO4H2'    )
 
       ! Define flags for species drydep indices
       DRYNITs  = Ind_('NITs', 'D')
