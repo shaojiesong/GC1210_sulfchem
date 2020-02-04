@@ -3042,7 +3042,7 @@
       REAL(fp)              :: L2,     L3,      Ld,     F,    Fc
       REAL(fp)              :: RK,     RKT,     DTCHEM, DT_T, TK
       REAL(fp)              :: F1,     RK1,     RK2,    RK3,  SO20
-      REAL(fp)              :: SO2_cd, H2O20,   O3,     L2S,  L3S
+      REAL(fp)              :: SO2_cd, H2O20,   O30,    L2S,  L3S
       REAL(fp)              :: LWC,    KaqH2O2, KaqO3,  PATM
       REAL(fp)              :: KaqHOBr, KaqHCHO, KdHMSA, HCHO0 ! SJS
       REAL(fp)              :: KaqHONO, KaqNO2, HONO0, NO20 ! SJS 20190708
@@ -3191,7 +3191,7 @@
       ! Loop over chemistry grid boxes
 !$OMP PARALLEL DO
 !$OMP+DEFAULT( SHARED )
-!$OMP+PRIVATE( I, J, L, SO20, H2O20, O3, PATM, TK, K0, M, KK, F1, RK1  )
+!$OMP+PRIVATE( I, J, L, SO20, H2O20, O30, PATM, TK, K0, M, KK, F1, RK1 )
 !$OMP+PRIVATE( RK2, RK, RKT, SO2_cd, L1, Ld, L2, L2S, L3, L3S, FC, LWC )
 !$OMP+PRIVATE( KaqH2O2, KaqO3, ALK, ALK1, ALK2, KaqHCHO, KaqHOBr       ) !SJS
 !$OMP+PRIVATE( KaqHONO, KaqNO2, HONO0, NO20, L8, L9, L8S, L9S          ) !SJS
@@ -3242,6 +3242,7 @@
          ! Initial SO2, H2O2, HOBr, and O3 [v/v]
          SO20   = Spc(I,J,L,id_SO2)
          H2O20  = Spc(I,J,L,id_H2O2)
+         O30    = Spc(I,J,L,id_O3)
          ! Initial HCHO, HMSA [v/v], SJS 20190609
          HCHO0  = Spc(I,J,L,id_HCHO)
          HMSA0  = Spc(I,J,L,id_HMSA)
@@ -3256,7 +3257,6 @@
          ELSE
             HOBr0  = 0.e+0_fp
          ENDIF
-         O3     = GET_O3( I, J, L, Input_Opt, State_Chm, State_Met )
 
          ! PATM  : Atmospheric pressure in atm
          ! Now use dry air partial pressure (ewl, 4/28/15)
@@ -3349,7 +3349,7 @@
          ! (3) O3 is in excess, then compute seasalt SO2 chemistry
          IF  ( ( ALK    > MINDAT )  .AND.
      &         ( SO2_cd > MINDAT )  .AND. 
-     &         ( SO2_cd < O3     ) ) THEN
+     &         ( SO2_cd < O30    ) ) THEN
 
             ! Compute oxidation of SO2 -> SO4 and condensation of
             ! HNO3 -> nitrate within the seasalt aerosol
@@ -3402,7 +3402,7 @@
             ! (3) O3 is in excess, then compute dust SO2 chemistry
             IF  ( ( ALK    > MINDAT )  .AND.
      &            ( SO2_cd > MINDAT )  .AND.
-     &            ( SO2_cd < O3     ) ) THEN
+     &            ( SO2_cd < O30    ) ) THEN
 
                ! Compute oxidation of SO2 -> SO4 and condensation of
                ! HNO3 -> nitrate within the dust aerosol
@@ -4002,7 +4002,7 @@
             !----------------------------------------------------------
 
             ! Argument of the exponential
-            XX = ( SO2_ss - O3 ) * KaqO3 * DTCHEM 
+            XX = ( SO2_ss - O30 ) * KaqO3 * DTCHEM 
 
             ! Test if EXP(XX) can be computed w/o numerical exception
             IF ( IS_SAFE_EXP( XX ) .and. ABS( XX ) > 0e+0_fp ) THEN
@@ -4011,14 +4011,15 @@
                L3  = EXP( XX )
 
                ! Loss by O3
-               L3S = SO2_ss * O3 * (L3 - 1.e+0_fp)/((SO2_ss * L3) - O3)
+               L3S = SO2_ss * O30 * (L3 - 1.e+0_fp) /
+     &               ((SO2_ss * L3) - O30)
 
             ELSE
 
                ! Follow the same logic for L3S as described in
                ! Jintai Lin's note above (bmy, 4/28/10)
                IF ( XX > 0.e+0_fp ) THEN 
-                  L3S = O3 
+                  L3S = O30
                ELSE IF ( XX < 0.e+0_fp) THEN
                   L3S = SO2_ss 
                ELSE
@@ -4335,14 +4336,14 @@
                KHOBr = 1.2e+9_fp                            ! for HOBr+SO3
 
                ! Make sure we don't divide by zero (ckeller, 1/25/18) 
-               TMP = KHOBr*HOBr0*HCHOBr + KO3*O3*HCO3 + 
+               TMP = KHOBr*HOBr0*HCHOBr + KO3*O30*HCO3 +
      &               KHCHO2*HCHO0*HCHCHO
                IF ( TMP > 0.0_fp ) THEN 
                   f_srhobr = KHOBr*HOBr0*HCHOBr / TMP
                   IF ( L5S == 0.e+0_fp ) THEN ! SJS 20191117
                      f_srhobr = 0.e+0_fp
                   ENDIF
-                  f_sro3   = KO3*O3*HCO3 / TMP !SJS
+                  f_sro3   = KO3*O30*HCO3 / TMP !SJS
                   SRhobr   = SR * f_srhobr
                   SRo3     = SR * f_sro3
                   SRhcho   = SR * ( 1.e+0_fp - f_srhobr - f_sro3 ) !SJS
@@ -4542,6 +4543,7 @@
          SO2_ss = MAX( SO2_ss + L7S+LH2S -
      &            (L2S+L3S+L4S+L5S+L6S+L8S+L9S+SR+LH1S+LH3S),
      &            MINDAT )
+         O30    = MAX( O30 - L3S, MINDAT )
          H2O20  = MAX( H2O20 - L2S, MINDAT )
          HONO0  = MAX( HONO0 - L8S + 2.e+0_fp*L9S, MINDAT )
          NO20   = MAX( NO20 - 2.e+0_fp*L9S, MINDAT )
@@ -4555,6 +4557,7 @@
          ! Store updated SO2, H2O2 back to the tracer arrays
          If (FullRun) Then 
             Spc(I,J,L,id_SO2)  = SO2_ss
+            Spc(I,J,L,id_O3)   = O30
             Spc(I,J,L,id_H2O2) = H2O20
             Spc(I,J,L,id_HCHO) = HCHO0 !SJS 20190610
             Spc(I,J,L,id_HOBr) = HOBr0 !SJS 20200201
@@ -9634,98 +9637,6 @@
       ENDIF
 
       END FUNCTION GET_NO3
-!EOC
-!------------------------------------------------------------------------------
-!                  GEOS-Chem Global Chemical Transport Model                  !
-!------------------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: get_o3
-!
-! !DESCRIPTION: Function GET\_O3 returns monthly mean O3 for offline sulfate
-!  aerosol simulations. (bmy, 12/16/02, 10/25/05)
-!\\
-!\\
-! !INTERFACE:
-!
-      FUNCTION GET_O3( I, J, L, Input_Opt, State_Chm, State_Met )
-     &                 RESULT( O3_VV )
-!
-! !USES:
-!
-      USE CMN_SIZE_MOD
-      USE ERROR_MOD,          ONLY : ERROR_STOP
-      USE Input_Opt_Mod,      ONLY : OptInput
-      USE State_Chm_Mod,      ONLY : ChmState
-      USE State_Met_Mod,      ONLY : MetState
-!
-! !INPUT PARAMETERS: 
-!
-      INTEGER,        INTENT(IN)  :: I, J, L     ! Lon, lat, vertical level
-      TYPE(OptInput), INTENT(IN)  :: Input_Opt  
-      TYPE(ChmState), INTENT(IN)  :: State_Chm   ! Chemistry State object
-      TYPE(MetState), INTENT(IN)  :: State_Met   ! Meteorology State object
-!
-! !REVISION HISTORY: 
-!  (1 ) We assume SETTRACE has been called to define IDO3. (bmy, 12/16/02)
-!  (2 ) Now reference inquiry functions from "tracer_mod.f" (bmy, 7/20/04)
-!  (3 ) Now remove reference to CMN, it's obsolete.  (bmy, 8/22/05)
-!  (4 ) Now references XNUMOLAIR from "tracer_mod.f" (bmy, 10/25/05)
-!  22 Dec 2011 - M. Payer    - Added ProTeX headers
-!  09 Nov 2012 - M. Payer    - Replaced all met field arrays with State_Met
-!                              derived type object
-!  04 Mar 2013 - R. Yantosca - Now pass Input_Opt%ITS_A_FULLCHEM_SIM and
-!                              Input_Opt%ITS_AN_AEROSOL_SIM
-!  06 Nov 2014 - R. Yantosca - Now use State_Met%AIRDEN(I,J,L)
-!  24 Mar 2015 - E. Lundgren - Replace dependency on tracer_mod with
-!                              CMN_GTCM_MOD to get XNUMOLAIR.
-!  22 Dec 2015 - M. Sulprizio- Remove references to CSPEC and JLOOP. We now get
-!                              species concentrations from State_Chm%Species.
-!  11 Oct 2018 - R. Yantosca - Remove invalid simulation error check; this
-!                              can be done in Init_Sulfate.
-!EOP
-!------------------------------------------------------------------------------
-!BOC
-!
-! !LOCAL VARIABLES:
-!
-      REAL(fp)              :: O3_VV
- 
-      !=================================================================
-      ! GET_O3 begins here!
-      !=================================================================
-
-      IF ( Input_Opt%ITS_A_FULLCHEM_SIM ) THEN
-
-         !--------------------
-         ! Coupled simulation
-         !--------------------
-
-         ! Get O3 from State_Chm%Species [molec/cm3] and convert it to [v/v]
-         ! O3 is defined only in the chemistry grid
-         IF ( State_Met%InChemGrid(I,J,L) ) THEN
-            O3_VV = State_Chm%Species(I,J,L,id_O3)
-         ELSE
-            O3_VV = 0e+0_fp
-         ENDIF
-
-      ELSE IF ( Input_Opt%ITS_AN_AEROSOL_SIM ) THEN
-         
-         !--------------------
-         ! Offline simulation
-         !--------------------
-
-         ! Get O3 [v/v] for this gridbox & month
-         ! O3 is defined only in the chemistry grid
-         IF ( L <= LLCHEM ) THEN
-            O3_VV = O3m(I,J,L)
-         ELSE
-            O3_VV = 0e+0_fp
-         ENDIF
-
-      ENDIF
-
-      END FUNCTION GET_O3
 !EOC
 !------------------------------------------------------------------------------
 !                  GEOS-Chem Global Chemical Transport Model                  !
