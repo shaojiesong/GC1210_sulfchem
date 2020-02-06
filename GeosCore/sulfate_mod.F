@@ -2893,6 +2893,7 @@
       USE ErrCode_Mod
       USE ERROR_MOD,          ONLY : IS_SAFE_EXP
       USE ERROR_MOD,          ONLY : SAFE_DIV
+      USE ERROR_MOD,          ONLY : ERROR_STOP
       USE Input_Opt_Mod,      ONLY : OptInput
       USE PRESSURE_MOD,       ONLY : GET_PCENTER
       USE State_Chm_Mod,      ONLY : ChmState
@@ -3069,13 +3070,13 @@
       REAL(fp)              :: H2SO4_cd,  H2SO4_gas
 
       REAL(fp)              :: L5S,SRo3,SRhobr            !(qjc, 04/10/16)
-      REAL(fp)              :: KaqO3_1 !(qjc, 04/10/16)
       REAL(fp)              :: HSO3aq, SO3aq                 !(qjc, 06/10/16) 
       REAL(fp)              :: LSTOT0    !(qjc, 06/20/16)
       REAL(fp)              :: rSIV, fupdateHOBr_0  !(qjc, 06/20/16) 
       REAL(fp)              :: HCO3,HCHOBr,KO3,KHOBr,f_srhobr,HOBr0  !(qjc, 01/31/17) 
       REAL(fp)              :: HCHCHO, KHCHO2, HMSA0, HMSC0, HMSP0 ! SJS
       REAL(fp)              :: TMP
+      REAL(fp)              :: Qcst, q, qq, TK1 ! SJS 20200206
 
       REAL(fp)              :: KaqO2, L4, L4S, MnII, FeIII
       REAL(fp)              :: DUST,  Mn_ant,  Mn_nat
@@ -3208,7 +3209,7 @@
 !$OMP+PRIVATE( KTH, H2SO4_cd, H2SO4_gas, Ki                            ) !tdf
 !$OMP+PRIVATE( IBIN, PSO4d_tot, PH2SO4d_tot, PNITd_tot, ALKA_d         )
 !$OMP+PRIVATE( L5S, SRo3, SRhobr, SRhcho, f_sro3                   ) !SJS
-!$OMP+PRIVATE( KaqO3_1, HSO3aq,SO3aq           ) !qjc
+!$OMP+PRIVATE( HSO3aq,SO3aq           ) !qjc
 !$OMP+PRIVATE( LSTOT0, rSIV,fupdateHOBr_0          ) !qjc
 !$OMP+PRIVATE( HCO3, HCHOBr, KO3, KHOBr, f_srhobr, HOBr0, TMP          ) !qjc
 !$OMP+PRIVATE( L4,    L4S,     KaqO2,  DUST, Mn_ant, Mn_nat, Mn_tot    )
@@ -3216,7 +3217,7 @@
 !$OMP+PRIVATE( Fe_d_ant, Fe_d_nat                                      )
 !$OMP+PRIVATE( Mn_d_ant, Mn_d_nat, KHCHO2, HCHCHO                      ) !SJS
 !$OMP+PRIVATE( LSTOT1, LSTOT2                                          ) !SJS
-!$OMP+PRIVATE( TauC, WTAREA, XMMS, DFKG                                ) !SJS
+!$OMP+PRIVATE( TauC, WTAREA, XMMS, DFKG, Qcst, q, qq, TK1              ) !SJS
 !$OMP+SCHEDULE( DYNAMIC )
       DO L = 1, LLPAR 
       DO J = 1, JJPAR
@@ -3480,10 +3481,12 @@
          KaqH2O2 = 0.e+0_fp
          KaqHCHO = 0.e+0_fp ! SJS 20190608
          KaqHOBr = 0.e+0_fp ! SJS 20200201
+         Qcst    = 0.e+0_fp ! SJS 20200206
+         q       = 0.e+0_fp ! SJS 20200206
+         qq      = 0.e+0_fp ! SJS 20200206
          KdHMSA  = 0.e+0_fp
          KHCHO2  = 0.e+0_fp
          KaqO3   = 0.e+0_fp
-         KaqO3_1 = 0.e+0_fp !(qjc, 04/10/16)
          KaqHONO = 0.e+0_fp
          KaqNO2  = 0.e+0_fp
          KaqO2   = 0.e+0_fp
@@ -3835,11 +3838,43 @@
             ! Add NO2 and HONO rxn rates, SJS 20190708
             CALL AQCHEM_SO2( LWC,     TK,    PATM,    SO2_ss,
      &                       HPLUS, IonStr,  MnII,    FeIII,
-     &                       KaqH2O2, KaqO3, KaqO3_1, KaqO2,
+     &                       KaqH2O2, KaqO3, KaqO2,
      &                       KaqHCHO, KdHMSA,
      &                       KaqHONO, KaqNO2, KaqHOBr,
      &                       HSO3aq,  SO3aq,
-     &                       KHCHO2 ) 
+     &                       KHCHO2,  Qcst )
+
+            ! TK == first-order rate with SO2 [s-1]
+            ! Estimate aqueous-phase transport limitation
+            TK1 = KaqO2 + O30*KaqO3 + H2O20*KaqH2O2 +
+     &            NO20*KaqNO2 + HONO0*KaqHONO +
+     &            HOBr0*KaqHOBr + HCHO0*KaqHCHO
+
+            q = 3.2e-1_fp * SQRT( SAFE_DIV( TK1, Qcst, 0e+0_fp ) )
+            IF ( q >= 0.e+0_fp .AND. q <= 0.5e+0_fp ) THEN
+               qq = 1.e+0_fp
+            ELSEIF ( q > 0.5e+0_fp .AND. q <= 4.e+0_fp ) THEN
+               qq = -0.12e+0_fp * q + 1.05e+0_fp
+            ELSEIF ( q > 4.e+0_fp .AND. q <= 12.e+0_fp ) THEN
+               qq = 1.84e+0_fp * ( q ** (-0.84e+0_fp) )
+            ELSEIF ( q > 12.e+0_fp ) THEN
+               qq = 2.89e+0_fp * ( q ** (-1.e+0_fp) )
+            ELSE
+               CALL ERROR_STOP('error in qq', 'sulfate_mod.f')
+            ENDIF
+
+            ! Adjust aqueous-phase transport limitation
+            KaqO2   = KaqO2   * qq
+            KaqO3   = KaqO3   * qq
+            KaqNO2  = KaqNO2  * qq
+            KaqHONO = KaqHONO * qq
+            KaqHCHO = KaqHCHO * qq
+            KaqHOBr = KaqHOBr * qq
+            KaqH2O2 = KaqH2O2 * qq
+
+            TK1 = KaqO2 + O30*KaqO3 + H2O20*KaqH2O2 +
+     &            NO20*KaqNO2 + HONO0*KaqHONO +
+     &            HOBr0*KaqHOBr + HCHO0*KaqHCHO
 
             !----------------------------------------------------------
             ! SJS 20190608
@@ -7858,11 +7893,11 @@
 !
       SUBROUTINE AQCHEM_SO2( LWC,     T,     P,       SO2, 
      &                       Hplus, Ionstr,  MnII,  FeIII, 
-     &                       KaqH2O2, KaqO3, KaqO3_1, KaqO2,
+     &                       KaqH2O2, KaqO3, KaqO2,
      &                       KaqHCHO, KdHMSA, ! SJS 20190607
      &                       KaqHONO, KaqNO2, KaqHOBr, ! SJS 20190708
      &                       HSO3aq,  SO3aq,
-     &                       KHCHO2 )
+     &                       KHCHO2,  Qcst )
 !
 ! !INPUT PARAMETERS: 
 !
@@ -7881,7 +7916,6 @@
 !
       REAL(fp), INTENT(OUT) :: KaqH2O2 ! Reaction rate for H2O2 [v/v/s]
       REAL(fp), INTENT(OUT) :: KaqO3   ! Reaction rate for O3 [v/v/s]
-      REAL(fp), INTENT(OUT) :: KaqO3_1 ! only the SO3-- oxidation [v/v/s], (qjc, 04/10/16)
       REAL(fp), INTENT(OUT) :: KaqHCHO ! Reaction rate for HCHO [v/v/s] (SJS 20190607)
       REAL(fp), INTENT(OUT) :: KaqNO2  ! Reaction rate for NO2  [v/v/s] (SJS 20190708)
       REAL(fp), INTENT(OUT) :: KaqHONO ! Reaction rate for HONO [v/v/s] (SJS 20190708)
@@ -7891,6 +7925,7 @@
       REAL(fp), INTENT(OUT) :: HSO3aq  ! Cloud bisulfite [mol/l] (qjc, 06/10/16)
       REAL(fp), INTENT(OUT) :: SO3aq   ! Cloud sulfite   [mol/l] (qjc, 06/10/16)
       REAL(fp), INTENT(OUT) :: KHCHO2  ! Reaction rate for HCHO [1/M/s] (SJS 20190809)
+      REAL(fp), INTENT(OUT) :: Qcst    ! Parameter for calculating Q (SJS 20200206)
 !
 ! !REMARKS:
 !  Chemical Reactions:
@@ -8019,6 +8054,9 @@
       ! Effective SO3aq for HOBr+SO3
       SO3aq  = SIV * XSO3            ! unit: M (qjc, 06/10/16)
 
+      ! Estimate Qcst SJS 20200206
+      Qcst = FHCSO2 * XSO2g * R * T * LWC ! unitless
+
       !=================================================================
       ! H2O2 equilibrium reaction
       ! H2O2 + H2O = H2O2.H2O
@@ -8092,10 +8130,6 @@
       
       ! Conversion rate from SO2 to SO4 via reaction with O3
       KaqO3 = (KO0*XSO2AQ + KO1*XHSO3 + KO2*XSO3) * FHCSO2 * XSO2g
-     &      * P * HCO3 * XO3g * LWC * R * T   ! [v/v/s]
-
-      !(qjc, 04/10/16)
-      KaqO3_1 = KO2*XSO3 * FHCSO2 * XSO2g
      &      * P * HCO3 * XO3g * LWC * R * T   ! [v/v/s]
 
       !=================================================================
