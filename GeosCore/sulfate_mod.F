@@ -1641,7 +1641,7 @@
       INTEGER                :: DryDep_ID
       REAL(fp)               :: DTCHEM
       REAL(fp)               :: DELZ,      DELZ1,  REFF
-      REAL(fp)               :: P,         DP,     PDP,      TEMP        
+      REAL(fp)               :: P,         DP,     PDP,      TEMP
       REAL(fp)               :: CONST,     SLIP,   VISC,     FAC1
       REAL(fp)               :: FAC2,      FLUX,   AREA_CM2, RHB
       REAL(fp)               :: RUM,       RWET,   RATIO_R
@@ -3076,7 +3076,8 @@
       REAL(fp)              :: HCO3,HCHOBr,KO3,KHOBr,f_srhobr,HOBr0  !(qjc, 01/31/17) 
       REAL(fp)              :: HCHCHO, KHCHO2, HMSA0, HMSC0, HMSP0 ! SJS
       REAL(fp)              :: TMP
-      REAL(fp)              :: Qcst, q, qq, TK1 ! SJS 20200206
+      REAL(fp)              :: Qcst, q, qq, TK1, TK0 ! SJS 20200206
+      REAL(fp)              :: TK1_2, DT2, TS2, TLS ! SJS 20200206
 
       REAL(fp)              :: KaqO2, L4, L4S, MnII, FeIII
       REAL(fp)              :: DUST,  Mn_ant,  Mn_nat
@@ -3217,7 +3218,8 @@
 !$OMP+PRIVATE( Fe_d_ant, Fe_d_nat                                      )
 !$OMP+PRIVATE( Mn_d_ant, Mn_d_nat, KHCHO2, HCHCHO                      ) !SJS
 !$OMP+PRIVATE( LSTOT1, LSTOT2                                          ) !SJS
-!$OMP+PRIVATE( TauC, WTAREA, XMMS, DFKG, Qcst, q, qq, TK1              ) !SJS
+!$OMP+PRIVATE( TauC, WTAREA, XMMS, DFKG, Qcst, q, qq, TK1, TK0         ) !SJS
+!$OMP+PRIVATE( TK1_2, TLS, DT2, TS2                                    ) !SJS
 !$OMP+SCHEDULE( DYNAMIC )
       DO L = 1, LLPAR 
       DO J = 1, JJPAR
@@ -3876,6 +3878,157 @@
      &            NO20*KaqNO2 + HONO0*KaqHONO +
      &            HOBr0*KaqHOBr + HCHO0*KaqHCHO
 
+
+
+
+
+            !----------------------------------------------------------
+            ! SJS 20200128
+
+            ! Time step [s]
+            DT2 = 60.e+0_fp
+            TS2 = INT(DTCHEM / DT2)
+
+            IF ( TK1 < 1.e+0_fp/DT2 ) THEN
+
+            !----------------------------------------------------------
+            ! Compute formation of HMSA (SO2 + HCHO => HMSA)
+            !----------------------------------------------------------
+
+            ! Argument of the exponential
+            XX = ( SO2_ss - HCHO0 ) * KaqHCHO * DT2
+            IF ( ABS( XX ) > 0e+0_fp ) THEN
+               L6  = EXP( XX )
+               L6S = SO2_ss * HCHO0 *
+     &              (L6 - 1.e+0_fp)/((SO2_ss * L6) - HCHO0)
+            ELSE
+               ! different solution when SO2 = HCHO
+               L6S = SO2_ss - 1/(KaqHCHO*DT2+1/SO2_ss)
+            ENDIF
+
+            !----------------------------------------------------------
+            ! Compute loss by HONO
+            !----------------------------------------------------------
+
+            XX  = ( SO2_ss - HONO0 ) * KaqHONO * DT2
+            IF ( ABS( XX ) > 0e+0_fp ) THEN
+               L8  = EXP( XX )
+               L8S = SO2_ss * HONO0 * ( L8 - 1.e+0_fp ) /
+     &               ( (SO2_ss * L8) - HONO0 )
+            ELSE
+               ! different solution when SO2 = HONO
+               L8S = SO2_ss - 1/(KaqHONO*DT2+1/SO2_ss)
+            ENDIF
+
+            !----------------------------------------------------------
+            ! Compute loss by NO2
+            !----------------------------------------------------------
+
+            ! Argument of the exponential
+            XX  = ( SO2_ss - NO20 ) * KaqNO2 * DT2
+            IF ( ABS( XX ) > 0e+0_fp ) THEN
+               L9  = EXP( XX )
+               L9S = SO2_ss * NO20 * ( L9 - 1.e+0_fp ) /
+     &               ( (SO2_ss * L9) - NO20 )
+            ELSE
+               ! different solution when SO2 = NO2
+               L9S = SO2_ss - 1/(KaqNO2*DT2+1/SO2_ss)
+            ENDIF
+
+            !----------------------------------------------------------
+            ! Compute loss by H2O2
+            !----------------------------------------------------------
+
+            ! Argument of the exponential
+            XX  = ( SO2_ss - H2O20 ) * KaqH2O2 * DT2
+            IF ( ABS( XX ) > 0e+0_fp ) THEN
+               L2  = EXP( XX )
+               L2S = SO2_ss * H2O20 * ( L2 - 1.e+0_fp ) /
+     &               ( (SO2_ss * L2) - H2O20 )
+            ELSE
+               ! different solution when SO2 = H2O2
+               L2S = SO2_ss - 1/(KaqH2O2*DT2+1/SO2_ss)
+            ENDIF
+
+            !----------------------------------------------------------
+            ! Compute loss by O3
+            !----------------------------------------------------------
+
+            ! Argument of the exponential
+            XX = ( SO2_ss - O30 ) * KaqO3 * DT2
+            IF ( ABS( XX ) > 0e+0_fp ) THEN
+               L3  = EXP( XX )
+               L3S = SO2_ss * O30 * (L3 - 1.e+0_fp) /
+     &               ((SO2_ss * L3) - O30)
+            ELSE
+               ! different solution when SO2 = O3
+               L3S = SO2_ss - 1/(KaqO3*DT2+1/SO2_ss)
+            ENDIF
+
+            !--------------------------------------------------------
+            ! Metal catalyzed oxidation of SO2 pathway
+            !----------------------------------------------------------
+
+            IF ( Input_Opt%LMETALCATSO2 ) THEN
+
+               ! Argument of the exponential
+               XX = -1.e+0_fp * KaqO2 * DT2
+               L4  = EXP( XX )
+               L4S = SO2_ss * (1.e+0_fp - L4)
+
+            ELSE
+
+               ! Set loss by O2 to zero
+               L4S = 0.0e+0_fp
+
+            ENDIF
+
+            !----------------------------------------------------------
+            ! Compute loss by HOBr
+            !----------------------------------------------------------
+
+            ! Argument of the exponential
+            XX = ( SO2_ss - HOBr0 ) * KaqHOBr * DT2
+            IF ( ABS( XX ) > 0e+0_fp ) THEN
+               L5S = SO2_ss * HOBr0 * ( EXP(XX) - 1.e+0_fp ) /
+     &               ( (SO2_ss * EXP(XX)) - HOBr0 )
+            ELSE
+               ! different solution when SO2 = HOBr
+               L5S = SO2_ss - 1/(KaqHOBr*DT2+1/SO2_ss)
+            ENDIF
+
+            !----------------------------------------------------------
+            ! Estimate box-average first-order rate vs. SO2
+            !----------------------------------------------------------
+
+            TLS = L2S + L3S + L4S + L5S + L6S + L8S + L9S
+            TK1_2 = TLS * 2.e+0_fp / DT2 / (SO2_ss*2.e+0_fp-TLS)
+            ! TK1_2 = log( SO2_ss / (SO2_ss-TLS) ) / DT2
+            TK1_2 = MAX( TK1_2, 0.e+0_fp )
+            TK1_2 = MIN( TK1_2, TK1*1.1e+0_fp )
+
+            ELSE
+
+               ! SJS 20200207
+               ! SAN JIA FEN JIN
+               XX = O30 + HCHO0 + HOBr0
+               IF ( XX < SO2_ss ) THEN
+                  TK1_2 = TK1 * ( XX / SO2_ss )
+               ELSE
+                  TK1_2 = TK1
+               ENDIF
+
+            ENDIF
+
+            ! box-average first-order rate vs. SO2
+            TK0 = FC / ( TauC + 1.e+0_fp/TK1_2 )
+            TK0 = MAX( TK0, 0.e+0_fp )
+            TK0 = MIN( TK0, FC/TauC )
+            TK0 = MIN( TK0, FC*TK1_2 )
+
+
+
+
             !----------------------------------------------------------
             ! SJS 20190608
             ! Compute decomposition of HMSA (HMSA => SO2 + HCHO)
@@ -4037,7 +4190,7 @@
             !----------------------------------------------------------
 
             ! Argument of the exponential
-            XX = ( SO2_ss - O30 ) * KaqO3 * DTCHEM 
+            XX = ( SO2_ss - O30 ) * KaqO3 * DTCHEM
 
             ! Test if EXP(XX) can be computed w/o numerical exception
             IF ( IS_SAFE_EXP( XX ) .and. ABS( XX ) > 0e+0_fp ) THEN
