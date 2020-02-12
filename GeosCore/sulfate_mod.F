@@ -3034,9 +3034,10 @@
       LOGICAL               :: IS_OFFLINE
       LOGICAL               :: IS_FULLCHEM
       LOGICAL               :: LDSTUP
-      INTEGER               :: I,      J,       L       !,      I1,   I2
+      INTEGER               :: I,      J,       L
       INTEGER               :: II,     NSTEP
       INTEGER               :: IBIN  ! tdf
+      INTEGER               :: I2,     TS2 ! SJS
       REAL(fp)              :: K0,     Ki,      KK,     M,    L1
       REAL(fp)              :: L2,     L3,      Ld,     F,    Fc
       REAL(fp)              :: RK,     RKT,     DTCHEM, DT_T, TK
@@ -3073,7 +3074,7 @@
       REAL(fp)              :: HOBr0  !(qjc, 01/31/17)
       REAL(fp)              :: KHCHO2, HMSA0, HMSC0, HMSP0 ! SJS
       REAL(fp)              :: Qcst, q, qq, TK1, TK0, dK0 ! SJS 20200206
-      REAL(fp)              :: TK1_2, DT2, TS2, TLS ! SJS 20200206
+      REAL(fp)              :: TK1_2, DT2, TLS ! SJS 20200206
       REAL(fp)              :: TLS0, L2S0, L3S0, L4S0, L5S0, L6S0 ! SJS 20200208
       REAL(fp)              :: L7S0, L8S0, L9S0 ! SJS 20200208
       REAL(fp)              :: O3_2, H2O2_2, NO2_2, HONO_2 ! SJS
@@ -3213,7 +3214,7 @@
 !$OMP+PRIVATE( Fe_ant, Fe_nat, Fe_tot, Fe_d, Mn_d,   FeIII,  MnII      )
 !$OMP+PRIVATE( Fe_d_ant, Fe_d_nat, Mn_d_ant, Mn_d_nat, KHCHO2          ) !SJS
 !$OMP+PRIVATE( TauC, TauC2, WTAREA, XMMS, DFKG, Qcst, q, qq, TK1, TK0  ) !SJS
-!$OMP+PRIVATE( TK1_2, TLS, DT2, TS2, HMSA_2, dK0                       ) !SJS
+!$OMP+PRIVATE( TK1_2, TLS, DT2, TS2, I2, HMSA_2, dK0                   ) !SJS
 !$OMP+PRIVATE( TLS0, L2S0, L3S0, L4S0, L5S0, L6S0, L7S0, L8S0, L9S0    ) !SJS
 !$OMP+PRIVATE( O3_2, H2O2_2, NO2_2, HONO_2, HOBr_2, HCHO_2, SO2_2      ) !SJS
 !$OMP+SCHEDULE( DYNAMIC )
@@ -3489,7 +3490,6 @@
          KaqO2   = 0.e+0_fp
          L2      = 0.e+0_fp
          L3      = 0.e+0_fp
-         L4      = 0.e+0_fp
          L6      = 0.e+0_fp ! SJS 20190610
          L8      = 0.e+0_fp ! SJS 20190708
          L9      = 0.e+0_fp
@@ -3884,8 +3884,12 @@
             HCHO_2 = HCHO0
             SO2_2  = SO2_ss
             HMSA_2 = HMSA0
+            L4     = 0.e+0_fp
+            I2     = 0
 
-!            DO I2 = 1, TS2
+            DO WHILE ( (I2 < TS2) .AND. (SO2_2 > MINDAT*1.1e+0_fp) )
+
+            I2 = I2 + 1
 
             TK1 = KaqO2 + O3_2*KaqO3 + H2O2_2*KaqH2O2 +
      &            NO2_2*KaqNO2 + HONO_2*KaqHONO +
@@ -3975,8 +3979,7 @@
 
                ! Argument of the exponential
                XX = -1.e+0_fp * KaqO2 * DT2
-               L4  = EXP( XX )
-               L4S = SO2_2 * (1.e+0_fp - L4)
+               L4S = SO2_2 * ( 1.e+0_fp - EXP(XX) )
 
             ELSE
 
@@ -4085,6 +4088,22 @@
             ELSE
                L7S0 = HMSA_2
             ENDIF
+
+            !----------------------------------------------------------
+            ! Update box-average concentrations [v/v]
+            !----------------------------------------------------------
+
+            SO2_2   = MAX( SO2_2  + L7S0 - TLS0, MINDAT )
+            O3_2    = MAX( O3_2   - L3S0, MINDAT )
+            H2O2_2  = MAX( H2O2_2 - L2S0, MINDAT )
+            HONO_2  = MAX( HONO_2 + 2.e+0_fp*L9S0 - L8S0, MINDAT )
+            NO2_2   = MAX( NO2_2  - 2.e+0_fp*L9S0, MINDAT )
+            HCHO_2  = MAX( HCHO_2 + L7S0 - L6S0, MINDAT )
+            HMSA_2  = MAX( HMSA_2 - L7S0 + L6S0, MINDAT )
+            HOBr_2  = MAX( HOBr_2 - L5S0, MINDAT )
+            L4      = MAX( L4     + L4S0, MINDAT )
+
+            ENDDO ! finish when TS2=DTCHEM/DT2
 
             !----------------------------------------------------------
             ! SJS 20190608
