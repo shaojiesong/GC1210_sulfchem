@@ -3035,13 +3035,12 @@
       LOGICAL               :: IS_FULLCHEM
       LOGICAL               :: LDSTUP
       INTEGER               :: I,      J,       L
-      INTEGER               :: II,     NSTEP
       INTEGER               :: IBIN  ! tdf
       INTEGER               :: I2,     TS2 ! SJS
       REAL(fp)              :: K0,     Ki,      KK,     M,    L1
       REAL(fp)              :: L2,     L3,      Ld,     F,    Fc
-      REAL(fp)              :: RK,     RKT,     DTCHEM, DT_T, TK
-      REAL(fp)              :: F1,     RK1,     RK2,    RK3,  SO20
+      REAL(fp)              :: RK,     RKT,     DTCHEM, TK
+      REAL(fp)              :: F1,     RK1,     RK2,    SO20
       REAL(fp)              :: SO2_cd, H2O20,   O30,    L2S,  L3S
       REAL(fp)              :: LWC,    KaqH2O2, KaqO3,  PATM
       REAL(fp)              :: KaqHOBr, KaqHCHO, KdHMSA, HCHO0 ! SJS
@@ -3049,17 +3048,16 @@
       REAL(fp)              :: L8, L9, L8S, L9S ! SJS 20190708
       REAL(fp)              :: ALK,    ALK1,    ALK2,    SO2_ss
       REAL(fp)              :: AlkA,   AlkC
-      REAL(fp)              :: Kt1,    Kt2,     AREASS1, AREASS2
+      REAL(fp)              :: Kt1,    Kt2
       REAL(fp)              :: PSO4E,  PSO4F,   Kt1N,    Kt2N
-      REAL(fp)              :: XX, IonStr,  TNVC, TNA, TCL, THMSA ! SJS
+      REAL(fp)              :: XX, IonStr, TNVC, TNA, TCL, THMSA ! SJS
       REAL(fp)              :: TFAA, TAAA, TMSA, LH1S, LH2S, LH3S ! SJS
       REAL(fp)              :: ATSO4, ATCA, ATK, ATMG, ATCL, ATNA ! SJS
       REAL(fp)              :: ATNH3, ATNO3, XRH, TNO2, TSO2      ! SJS
       REAL(fp)              :: ALWC, AHPLUS, AIonStr, AWVF        ! SJS
-      REAL(fp)              :: L6, L6S, L7S       ! SJS
+      REAL(fp)              :: L6, L6S       ! SJS
       REAL(fp)              :: TauC, TauC2, WTAREA, XMMS, DFKG    ! SJS
       REAL(fp)              :: HPLUS, SO4nss, TNH3, TNO3, GNO3, ANIT
-      REAL(fp)              :: LSTOT1, LSTOT2                     ! SJS 
       REAL(fp)              :: TANIT
       !tdf 03/02/2K9
       REAL(fp)              :: PSO4d_tot, PNITd_tot
@@ -3069,7 +3067,6 @@
 
       REAL(fp)              :: L5S            !(qjc, 04/10/16)
       REAL(fp)              :: HSO3aq, SO3aq                 !(qjc, 06/10/16) 
-      REAL(fp)              :: LSTOT0    !(qjc, 06/20/16)
       REAL(fp)              :: fupdateHOBr_0  !(qjc, 06/20/16)
       REAL(fp)              :: HOBr0  !(qjc, 01/31/17)
       REAL(fp)              :: KHCHO2, HMSA0, HMSC0, HMSP0 ! SJS
@@ -3198,8 +3195,8 @@
 !$OMP+PRIVATE( RK2, RK, RKT, SO2_cd, L1, Ld, L2, L2S, L3, L3S, FC, LWC )
 !$OMP+PRIVATE( KaqH2O2, KaqO3, ALK, ALK1, ALK2, KaqHCHO, KaqHOBr       ) !SJS
 !$OMP+PRIVATE( KaqHONO, KaqNO2, HONO0, NO20, L8, L9, L8S, L9S          ) !SJS
-!$OMP+PRIVATE( KdHMSA, L6, L6S, L7S, HCHO0, HMSA0, HMSC0, HMSP0        ) !SJS
-!$OMP+PRIVATE( Kt1, Kt2, AREASS1, AREASS2, SO2_ss, Kt1N, Kt2N          )
+!$OMP+PRIVATE( KdHMSA, L6, L6S, HCHO0, HMSA0, HMSC0, HMSP0             ) !SJS
+!$OMP+PRIVATE( Kt1, Kt2, SO2_ss, Kt1N, Kt2N                            )
 !$OMP+PRIVATE( PSO4E, PSO4F, XX, IonStr, TNVC, TNA, TCL, THMSA         ) !SJS
 !$OMP+PRIVATE( TFAA, TAAA, TMSA, TSO2, TNO2, LH1S, LH2S, LH3S          ) !SJS
 !$OMP+PRIVATE( ATSO4, ATCA, ATK, ATMG, ATCL, ATNA                      ) !SJS
@@ -3209,7 +3206,7 @@
 !$OMP+PRIVATE( ALK_d, KTS, KTN, PSO4_d, PH2SO4_d, PNIT_d, SO2_gas      ) !tdf
 !$OMP+PRIVATE( KTH, H2SO4_cd, H2SO4_gas, Ki                            ) !tdf
 !$OMP+PRIVATE( IBIN, PSO4d_tot, PH2SO4d_tot, PNITd_tot, ALKA_d         )
-!$OMP+PRIVATE( LSTOT0, LSTOT1, LSTOT2, fupdateHOBr_0, HOBr0            )
+!$OMP+PRIVATE( fupdateHOBr_0, HOBr0                                    )
 !$OMP+PRIVATE( L4, L4S, L5S, KaqO2,  DUST, Mn_ant, Mn_nat, Mn_tot      )
 !$OMP+PRIVATE( Fe_ant, Fe_nat, Fe_tot, Fe_d, Mn_d,   FeIII,  MnII      )
 !$OMP+PRIVATE( Fe_d_ant, Fe_d_nat, Mn_d_ant, Mn_d_nat, KHCHO2          ) !SJS
@@ -3224,9 +3221,6 @@
 
          ! Initialize for safety's sake 
          Ld       = 0.0_fp
-         LSTOT0   = 0.0_fp
-         LSTOT1   = 0.0_fp
-         LSTOT2   = 0.0_fp
 
          ! Now calculate HOBr+SO2 in sulfate module
          ! SJS 20200201
@@ -3476,9 +3470,6 @@
          LWC     = SAFE_DIV( LWC, FC, 0e+0_fp )
 
          ! Zero variables
-         KaqH2O2 = 0.e+0_fp
-         KaqHCHO = 0.e+0_fp ! SJS 20190608
-         KaqHOBr = 0.e+0_fp ! SJS 20200201
          Qcst    = 0.e+0_fp ! SJS 20200206
          q       = 0.e+0_fp ! SJS 20200206
          qq      = 0.e+0_fp ! SJS 20200206
@@ -3488,8 +3479,12 @@
          KaqHONO = 0.e+0_fp
          KaqNO2  = 0.e+0_fp
          KaqO2   = 0.e+0_fp
+         KaqH2O2 = 0.e+0_fp
+         KaqHCHO = 0.e+0_fp ! SJS 20190608
+         KaqHOBr = 0.e+0_fp ! SJS 20200201
          L2      = 0.e+0_fp
          L3      = 0.e+0_fp
+         L4      = 0.e+0_fp
          L6      = 0.e+0_fp ! SJS 20190610
          L8      = 0.e+0_fp ! SJS 20190708
          L9      = 0.e+0_fp
@@ -3498,12 +3493,37 @@
          L4S     = 0.e+0_fp
          L5S     = 0.e+0_fp !(qjc, 04/10/16)
          L6S     = 0.e+0_fp
-         L7S     = 0.e+0_fp
          L8S     = 0.e+0_fp
          L9S     = 0.e+0_fp
+         L2S0    = 0.e+0_fp
+         L3S0    = 0.e+0_fp
+         L4S0    = 0.e+0_fp
+         L5S0    = 0.e+0_fp
+         L6S0    = 0.e+0_fp
+         L7S0    = 0.e+0_fp
+         L8S0    = 0.e+0_fp
+         L9S0    = 0.e+0_fp
+         TK1     = 0.e+0_fp
+         TK1_2   = 0.e+0_fp
+         TLS     = 0.e+0_fp
+         TLS0    = 0.e+0_fp
+         dK0     = 0.e+0_fp
+         TK0     = 0.e+0_fp
          HPLUS   = 0.e+0_fp
          IonStr  = 0.e+0_fp
+         SO2_2   = 0.e+0_fp
+         O3_2    = 0.e+0_fp
+         H2O2_2  = 0.e+0_fp
+         NO2_2   = 0.e+0_fp
+         HONO_2  = 0.e+0_fp
+         HOBr_2  = 0.e+0_fp
+         HCHO_2  = 0.e+0_fp
+         HMSA_2  = 0.e+0_fp
  
+         ! Time step [s]
+         DT2 = 60.e+0_fp
+         TS2 = INT(DTCHEM / DT2)
+
          ! If (1) there is cloud, (2) there is SO2 present, and 
          ! (3) the T > -15 C, then compute aqueous SO2 chemistry
          ! Prevent divide-by-zero if LWC=0 (mpayer, 9/6/13)
@@ -3871,10 +3891,6 @@
             KaqHOBr = KaqHOBr * qq
             KaqH2O2 = KaqH2O2 * qq
 
-            ! Time step [s]
-            DT2 = 60.e+0_fp
-            TS2 = INT(DTCHEM / DT2)
-
             ! Initialize
             O3_2   = O30
             H2O2_2 = H2O20
@@ -3888,8 +3904,6 @@
             I2     = 0
 
             DO WHILE ( (I2 < TS2) .AND. (SO2_2 > MINDAT*1.1e+0_fp) )
-
-            I2 = I2 + 1
 
             TK1 = KaqO2 + O3_2*KaqO3 + H2O2_2*KaqH2O2 +
      &            NO2_2*KaqNO2 + HONO_2*KaqHONO +
@@ -4010,7 +4024,7 @@
             TK1_2 = TLS * 2.e+0_fp / DT2 / (SO2_2*2.e+0_fp-TLS)
             ! TK1_2 = log( SO2_2 / (SO2_2-TLS) ) / DT2
             TK1_2 = MAX( TK1_2, 0.e+0_fp )
-            TK1_2 = MIN( TK1_2, TK1*1.1e+0_fp )
+            ! TK1_2 = MIN( TK1_2, TK1*1.1e+0_fp )
 
             ELSE ! TK1 > 1.e+0_fp/DT2
 
@@ -4102,319 +4116,24 @@
             HMSA_2  = MAX( HMSA_2 - L7S0 + L6S0, MINDAT )
             HOBr_2  = MAX( HOBr_2 - L5S0, MINDAT )
             L4      = MAX( L4     + L4S0, MINDAT )
+            I2      = I2 + 1
 
             ENDDO ! finish when TS2=DTCHEM/DT2
-
-            !----------------------------------------------------------
-            ! SJS 20190608
-            ! Compute decomposition of HMSA (HMSA => SO2 + HCHO)
-            ! Prevent floating-point exception
-            ! by not allowing the exponential to go to infinity if 
-            ! the argument is too large.  (win, bmy, 1/4/09)
-            !----------------------------------------------------------
-
-            ! Argument of the exponential
-            XX = -1.e+0_fp * KdHMSA * DTCHEM
-
-            ! Test if EXP(XX) can be computed w/o numerical exception
-            IF ( IS_SAFE_EXP( XX ) ) THEN
-               L7S = HMSA0 * (1.e+0_fp - EXP( XX ))
-            ELSE
-               L7S = HMSA0
-            ENDIF
-
-            L7S = L7S * FC !Actually formation of SO2 and HCHO
-
-            !----------------------------------------------------------
-            ! SJS 20190608
-            ! Compute formation of HMSA (SO2 + HCHO => HMSA)
-            ! Prevent floating-point exception
-            ! by not allowing the exponential to go to infinity if 
-            ! the argument is too large.  (win, bmy, 1/4/09)
-            !----------------------------------------------------------
-
-            ! Argument of the exponential
-            XX = ( SO2_ss - HCHO0 ) * KaqHCHO * DTCHEM
-
-            ! Test if EXP(XX) can be computed w/o numerical exception
-            IF ( IS_SAFE_EXP( XX ) .and. ABS( XX ) > 0e+0_fp ) THEN
-
-               ! Aqueous phase SO2 loss rate w/ HCHO [v/v/timestep]
-               L6  = EXP( XX )
-
-               ! Loss by HCHO [v/v]
-               L6S = SO2_ss * HCHO0 *
-     &              (L6 - 1.e+0_fp)/((SO2_ss * L6) - HCHO0)
-
-            ELSE
-
-               ! Follow the same logic for L6S as described in
-               ! Jintai Lin's note below (bmy, 4/28/10)
-               IF ( XX > 0.e+0_fp ) THEN 
-                  L6S = HCHO0
-               ELSE IF ( XX < 0.e+0_fp) THEN
-                  L6S = SO2_ss
-               ELSE
-                  !(qjc, 04/10/16) different solution when SO2_ss = HCHO
-                  L6S = SO2_ss - 1/(KaqHCHO*DTCHEM+1/SO2_ss)
-               ENDIF
-            ENDIF
-
-            !----------------------------------------------------------
-            ! Compute loss by HONO.  Prevent floating-point exception
-            ! by not allowing the exponential to go to infinity if 
-            ! the argument is too large.  (win, bmy, 1/4/09)
-            !----------------------------------------------------------
-
-            ! Argument of the exponential
-            XX  = ( SO2_ss - HONO0 ) * KaqHONO * DTCHEM
-
-            ! Test if EXP(XX) can be computed w/o numerical exception
-            IF ( IS_SAFE_EXP( XX ) .and. ABS( XX ) > 0e+0_fp ) THEN
-
-               ! Aqueous phase SO2 loss rate w/ HONO [v/v/timestep]
-               L8  = EXP( XX )
-
-               ! Loss by HONO
-               L8S = SO2_ss * HONO0 * ( L8 - 1.e+0_fp ) / 
-     &               ( (SO2_ss * L8) - HONO0 )  
-            ELSE
-
-               IF ( XX > 0.e+0_fp ) THEN 
-                  L8S = HONO0 
-               ELSE IF ( XX < 0.e+0_fp) THEN
-                  L8S = SO2_ss
-               ELSE
-                  !(qjc, 04/10/16) different solution when SO2_ss = HONO0
-                  L8S = SO2_ss - 1/(KaqHONO*DTCHEM+1/SO2_ss)
-               ENDIF
-
-            ENDIF
-
-            !----------------------------------------------------------
-            ! Compute loss by NO2.  Prevent floating-point exception
-            ! by not allowing the exponential to go to infinity if 
-            ! the argument is too large.  (win, bmy, 1/4/09)
-            !----------------------------------------------------------
-
-            ! Argument of the exponential
-            XX  = ( SO2_ss - NO20 ) * KaqNO2 * DTCHEM
-
-            ! Test if EXP(XX) can be computed w/o numerical exception
-            IF ( IS_SAFE_EXP( XX ) .and. ABS( XX ) > 0e+0_fp ) THEN
-
-               ! Aqueous phase SO2 loss rate w/ NO2 [v/v/timestep]
-               L9  = EXP( XX )
-
-               ! Loss by NO2
-               L9S = SO2_ss * NO20 * ( L9 - 1.e+0_fp ) / 
-     &               ( (SO2_ss * L9) - NO20 )  
-            ELSE
-
-               IF ( XX > 0.e+0_fp ) THEN 
-                  L9S = NO20 
-               ELSE IF ( XX < 0.e+0_fp) THEN
-                  L9S = SO2_ss
-               ELSE
-                  !(qjc, 04/10/16) different solution when SO2_ss = NO20
-                  L9S = SO2_ss - 1/(KaqNO2*DTCHEM+1/SO2_ss)
-               ENDIF
-
-            ENDIF
-
-            !----------------------------------------------------------
-            ! Compute loss by H2O2.  Prevent floating-point exception
-            ! by not allowing the exponential to go to infinity if 
-            ! the argument is too large.  (win, bmy, 1/4/09)
-            !----------------------------------------------------------
-
-            ! Argument of the exponential
-            XX  = ( SO2_ss - H2O20 ) * KaqH2O2 * DTCHEM
-
-            ! Test if EXP(XX) can be computed w/o numerical exception
-            IF ( IS_SAFE_EXP( XX ) .and. ABS( XX ) > 0e+0_fp ) THEN
-
-               ! Aqueous phase SO2 loss rate w/ H2O2 [v/v/timestep]
-               L2  = EXP( XX )
-
-               ! Loss by H2O2
-               L2S = SO2_ss * H2O20 * ( L2 - 1.e+0_fp ) / 
-     &               ( (SO2_ss * L2) - H2O20 )  
-            ELSE
-
-               ! NOTE from Jintai Lin (4/28/10):
-               ! However, in the case of a negative XX, L2S should be 
-               ! approximated as SO2_ss, instead of H2O20. In other words, 
-               ! L2S = SO2_ss * H2O20 * ( L2 - 1.D0 ) / ( (SO2_ss*L2) - H2O20 )
-               ! reaches different limits when XX reaches positive infinity 
-               ! and negative infinity.
-               IF ( XX > 0.e+0_fp ) THEN 
-                  L2S = H2O20 
-               ELSE IF ( XX < 0.e+0_fp) THEN
-                  L2S = SO2_ss
-               ELSE
-                  !(qjc, 04/10/16) different solution when SO2_ss = H2O20
-                  L2S = SO2_ss - 1/(KaqH2O2*DTCHEM+1/SO2_ss)
-               ENDIF
-
-            ENDIF
-
-            !----------------------------------------------------------
-            ! Compute loss by O3.  Prevent floating-point exception
-            ! by not allowing the exponential to go to infinity if 
-            ! the argument is too large. (win, bmy, 1/4/09)
-            !----------------------------------------------------------
-
-            ! Argument of the exponential
-            XX = ( SO2_ss - O30 ) * KaqO3 * DTCHEM
-
-            ! Test if EXP(XX) can be computed w/o numerical exception
-            IF ( IS_SAFE_EXP( XX ) .and. ABS( XX ) > 0e+0_fp ) THEN
-
-               ! Aqueous phase SO2 loss rate w/ O3 [v/v/timestep]
-               L3  = EXP( XX )
-
-               ! Loss by O3
-               L3S = SO2_ss * O30 * (L3 - 1.e+0_fp) /
-     &               ((SO2_ss * L3) - O30)
-
-            ELSE
-
-               ! Follow the same logic for L3S as described in
-               ! Jintai Lin's note above (bmy, 4/28/10)
-               IF ( XX > 0.e+0_fp ) THEN 
-                  L3S = O30
-               ELSE IF ( XX < 0.e+0_fp) THEN
-                  L3S = SO2_ss 
-               ELSE
-                  !(qjc, 04/10/16) different solution when SO2_ss = O3
-                  L3S = SO2_ss - 1/(KaqO3*DTCHEM+1/SO2_ss)
-               ENDIF
-            ENDIF
-
-            IF ( Input_Opt%LMETALCATSO2 ) THEN
-
-               !--------------------------------------------------------
-               ! Metal catalyzed oxidation of SO2 pathway
-               !
-               ! Compute loss by O2.  I did not do what Jintai Lin did
-               ! above for the other aqueous-phase reactions because it
-               ! doesn't make sense for this reaction (bec, 7/7/15)
-               !----------------------------------------------------------
-
-               ! Argument of the exponential
-               XX = -1.e+0_fp * KaqO2 * DTCHEM
-
-               IF ( IS_SAFE_EXP( XX ) ) THEN
-                  ! Aqueous phase SO2 loss rate w/ O2 [v/v/timestep]
-                  L4  = EXP( XX )
-
-                  ! Loss by O2
-                  L4S = SO2_ss * (1.e+0_fp - L4)
-               ELSE
-                  L4S = SO2_ss
-               ENDIF
-
-            ELSE
-
-               ! Set loss by O2 to zero
-               L4S = 0.0e+0_fp
-
-            ENDIF
-
-            !----------------------------------------------------------
-            ! Compute loss by HOBr.  Prevent floating-point exception
-            ! by not allowing the exponential to go to infinity if 
-            ! the argument is too large. !qjc (04/05/16)
-            !----------------------------------------------------------
-
-            ! Argument of the exponential
-            XX = ( SO2_ss - HOBr0 ) * KaqHOBr * DTCHEM
-
-            ! Test if EXP(XX) can be computed w/o numerical exception
-            IF ( IS_SAFE_EXP( XX ) .and. ABS( XX ) > 0e+0_fp ) THEN
-
-               ! Loss by HOBr
-               L5S = SO2_ss * HOBr0 * ( EXP(XX) - 1.e+0_fp ) /
-     &               ( (SO2_ss * EXP(XX)) - HOBr0 )
-
-            ELSE
-
-               ! Follow the same logic for L2S as described in
-               ! Jintai Lin's note above
-               IF ( XX > 0.e+0_fp ) THEN
-                  L5S = HOBr0
-               ELSE IF ( XX < 0.e+0_fp) THEN
-                  L5S = SO2_ss
-               ELSE
-                  !(qjc, 04/10/16) different solution when SO2 = HOBr
-                  L5S = SO2_ss - 1/(KaqHOBr*DTCHEM+1/SO2_ss)
-               ENDIF
-            ENDIF
-
-            ! SJS 20190708
-            ! Turn off specific pathways
-            ! SJS-OPTION
-            IF (-1 > 0) THEN
-               L4    = 0.e+0_fp
-               L4S   = 0.e+0_fp ! TMI+O2
-               L8    = 0.e+0_fp
-               L8S   = 0.e+0_fp ! HONO
-               L9    = 0.e+0_fp
-               L9S   = 0.e+0_fp ! NO2
-               L5S   = 0.e+0_fp
-            ENDIF
-
-            ! SJS 20190610
-            ! Set L6S to be zero if other one-way processes are fast
-            ! SJS-OPTION
-            IF (1 > 0) THEN
-               LSTOT0 = L2S + L3S + L4S + L5S + L8S + L9S
-               IF (LSTOT0 > SO2_ss) THEN
-                  L6S = 0.e+0_fp
-               ENDIF
-            ENDIF
-
-            LSTOT0 = L2S + L3S + L4S + L5S + L6S + L8S + L9S ! SJS 20190610
-
-            ! make sure sulfate produced is less than SO2 available
-            ! (qjc, 06/20/16)
-            ! Total loss cannot exceed FC conc, SJS 20190608
-            IF (LSTOT0 > SO2_ss) THEN
-
-               L2S   = SO2_ss * FC * L2S   / LSTOT0
-               L3S   = SO2_ss * FC * L3S   / LSTOT0
-               L4S   = SO2_ss * FC * L4S   / LSTOT0
-               L5S   = SO2_ss * FC * L5S   / LSTOT0
-               L6S   = SO2_ss * FC * L6S   / LSTOT0 !SJS
-               L8S   = SO2_ss * FC * L8S   / LSTOT0 !SJS
-               L9S   = SO2_ss * FC * L9S   / LSTOT0 !SJS
-
-            ELSE
-
-               L2S   = L2S * FC
-               L3S   = L3S * FC
-               L4S   = L4S * FC
-               L5S   = L5S * FC
-               L6S   = L6S * FC !SJS
-               L8S   = L8S * FC !SJS
-               L9S   = L9S * FC !SJS
-
-            ENDIF
 
          ELSE
 
             ! Otherwise, don't do aqueous chemistry
-            L2S          = 0.e+0_fp
-            L3S          = 0.e+0_fp
-            L4S          = 0.e+0_fp
-            L5S          = 0.e+0_fp !(qjc, 11/04/16)
-            L6S          = 0.e+0_fp !SJS 20190609
-            L7S          = 0.e+0_fp !SJS 20190610
-            L8S          = 0.e+0_fp !SJS 20190708
-            L9S          = 0.e+0_fp !SJS 20190708
-            HPLUS        = 0.e+0_fp
-            IonStr       = 0.e+0_fp
+            SO2_2   = MAX( SO2_ss, MINDAT )
+            O3_2    = MAX( O30,    MINDAT )
+            H2O2_2  = MAX( H2O20,  MINDAT )
+            NO2_2   = MAX( NO20,   MINDAT )
+            HONO_2  = MAX( HONO0,  MINDAT )
+            HOBr_2  = MAX( HOBr0,  MINDAT )
+            HCHO_2  = MAX( HCHO0,  MINDAT )
+            HMSA_2  = MAX( HMSA0,  MINDAT )
+            L4      = 0.e+0_fp
+            HPLUS   = 0.e+0_fp
+            IonStr  = 0.e+0_fp
 
             ! Store HSO3aq, SO3aq for use in gckpp_HetRates.F90
             ! Avoid divide-by-zero errors
@@ -4512,96 +4231,61 @@
          ! Option to turn off hetchem, SJS 20190809
          IF ( 1 > 0 ) THEN
             LH1S = 0.e+0_fp
-!            LH2S = 0.e+0_fp
-!            LH3S = 0.e+0_fp
+            LH2S = 0.e+0_fp
+            LH3S = 0.e+0_fp
          ENDIF
 
          !==============================================================
          ! Update concentrations and fluxes
-         ! SJS 20191114
          !==============================================================
 
-         ! make sure sulfate produced is less than SO2 available
-         LSTOT1 = L2S + L3S + L4S + L5S + L6S + L8S + L9S +
-     &            LH1S + LH3S
+         ! SO2 chemical loss rate  = SO4 production rate [v/v/timestep]
+         PSO4P1_SO2(I,J,L) = 1.5e+0_fp*(NO20-NO2_2) + HONO0-HONO_2
+         PSO4P2_SO2(I,J,L) = H2O20-H2O2_2
+         PSO4P3_SO2(I,J,L) = O30-O3_2
+         PSO4P4_SO2(I,J,L) = L4
+         PSO4P5_SO2(I,J,L) = PSO4E + HOBr0-HOBr_2
+         PSO4P6_SO2(I,J,L) = 0.e+0_fp
+         PSO4P7_SO2(I,J,L) = 0.e+0_fp
+         PHMSA_SO2(I,J,L)  = HCHO0-HCHO_2
+         PHMSC_SO2(I,J,L)  = 0.e+0_fp
+         PHMSP_SO2(I,J,L)  = 0.e+0_fp
 
-         IF (LSTOT1 > SO2_ss) THEN
+         PSO4_SO2(I,J,L)   = L1 +
+     &                       PSO4P1_SO2(I,J,L) +
+     &                       PSO4P2_SO2(I,J,L) +
+     &                       PSO4P3_SO2(I,J,L) +
+     &                       PSO4P4_SO2(I,J,L) +
+     &                       PSO4P5_SO2(I,J,L) +
+     &                       PSO4P6_SO2(I,J,L) +
+     &                       PSO4P7_SO2(I,J,L)
 
-            L2S   = SO2_ss * L2S   / LSTOT1
-            L3S   = SO2_ss * L3S   / LSTOT1
-            L4S   = SO2_ss * L4S   / LSTOT1
-            L5S   = SO2_ss * L5S   / LSTOT1
-            L6S   = SO2_ss * L6S   / LSTOT1
-            L8S   = SO2_ss * L8S   / LSTOT1
-            L9S   = SO2_ss * L9S   / LSTOT1
-            LH1S  = SO2_ss * LH1S  / LSTOT1
-            LH3S  = SO2_ss * LH3S  / LSTOT1
+         ! Production of sulfate on sea salt
+         PSO4_ss(I,J,L) = PSO4F
 
-         ENDIF
-
-         ! make sure hmsa lost is is less than hmsa available
-         LSTOT2 = L7S + LH2S
-
-         IF (LSTOT2 > HMSA0) THEN
-
-            L7S    = HMSA0 * L7S   / LSTOT2
-            LH2S   = HMSA0 * LH2S  / LSTOT2
-
-         ENDIF
-
-         ! Make sure SO2_ss and H2O20 are in the proper range
-         ! Box-average concentration [v/v], SJS 20190808
-         SO2_ss = MAX( SO2_ss + L7S+LH2S -
-     &            (L2S+L3S+L4S+L5S+L6S+L8S+L9S+LH1S+LH3S),
-     &            MINDAT )
-         O30    = MAX( O30 - L3S, MINDAT )
-         H2O20  = MAX( H2O20 - L2S, MINDAT )
-         HONO0  = MAX( HONO0 - L8S + 2.e+0_fp*L9S, MINDAT )
-         NO20   = MAX( NO20 - 2.e+0_fp*L9S, MINDAT )
-         HCHO0  = MAX( HCHO0 + L7S-L6S + LH2S-LH3S, MINDAT )
-         HOBr0  = MAX( HOBr0 - L5S, MINDAT )
+         ! Box-average concentration [v/v]
+         SO20   = MAX( SO2_2, MINDAT )
+         O30    = MAX( O3_2, MINDAT )
+         H2O20  = MAX( H2O2_2, MINDAT )
+         HONO0  = MAX( HONO_2, MINDAT )
+         NO20   = MAX( NO2_2, MINDAT )
+         HCHO0  = MAX( HCHO_2, MINDAT )
+         HOBr0  = MAX( HOBr_2, MINDAT )
 
          ! Update SO2 level, save SO2[ppv], H2O2[ppv] for WETDEP, SJS 20190801
-         SO2s( I,J,L) = SO2_ss
+         SO2s( I,J,L) = SO20
          H2O2s(I,J,L) = H2O20
 
          ! Store updated SO2, H2O2 back to the tracer arrays
          If (FullRun) Then 
-            Spc(I,J,L,id_SO2)  = SO2_ss
+            Spc(I,J,L,id_SO2)  = SO20
             Spc(I,J,L,id_O3)   = O30
             Spc(I,J,L,id_H2O2) = H2O20
             Spc(I,J,L,id_HCHO) = HCHO0 !SJS 20190610
             Spc(I,J,L,id_HOBr) = HOBr0 !SJS 20200201
             Spc(I,J,L,id_HONO) = HONO0 !SJS 20190708
             Spc(I,J,L,id_NO2)  = NO20  !SJS 20190708
-
          End If
-
-         ! SO2 chemical loss rate  = SO4 production rate [v/v/timestep]
-         PSO4_SO2(I,J,L) = L1 + L2S + L3S + L4S + L5S +
-     &                     L8S + L9S + PSO4E +
-     &                     LH1S
-
-         PSO4P1_SO2(I,J,L) = L8S
-         PSO4P2_SO2(I,J,L) = L2S
-         PSO4P3_SO2(I,J,L) = L3S
-         PSO4P4_SO2(I,J,L) = L4S
-         PSO4P5_SO2(I,J,L) = L5S + PSO4E
-         PSO4P6_SO2(I,J,L) = L9S
-         PSO4P7_SO2(I,J,L) = LH1S
-
-         PHMSA_SO2(I,J,L) = L6S-L7S + LH3S-LH2S
-
-         XX = MIN( SAFE_DIV( HMSC0, HMSA0, 0e+0_fp ), 1e+0_fp )
-         XX = MAX( XX, 0e+0_fp )
-         PHMSC_SO2(I,J,L) = L6S-L7S*XX
-
-         XX = MIN( SAFE_DIV( HMSP0, HMSA0, 0e+0_fp ), 1e+0_fp )
-         XX = MAX( XX, 0e+0_fp )
-         PHMSP_SO2(I,J,L) = LH3S-LH2S*XX
-
-         ! Production of sulfate on sea salt
-         PSO4_ss (I,J,L) = PSO4F
 
 !GanLuo
          PSO4s(I,J,L)   = ( PSO4_SO2(I,J,L) ) *
@@ -4651,7 +4335,8 @@
      &                    State_Chm%SpcData(id_HMSP)%Info%emMW_g )
 
 #if   defined( TOMAS )
-         PSO4_SO2AQ(I,J,L) = L2S + L3S ! For TOMAS microphysics
+!         PSO4_SO2AQ(I,J,L) = L2S + L3S ! For TOMAS microphysics
+         PSO4_SO2AQ(I,J,L) = 0.e+0_fp ! For TOMAS microphysics
 #endif
 
          ! tdf Production of sulfate and nitrate on dust
@@ -4682,42 +4367,42 @@
            
             ! P(SO4) from gas-phase oxidation [kg S/timestep]
             AD05(I,J,L,5) = AD05(I,J,L,5) +
-     &                      ( L1  * State_Met%AD(I,J,L) / TCVV_S )
+     &                      ( 0.e+0_fp  * State_Met%AD(I,J,L) / TCVV_S )
 
             ! P(SO4) from aqueous-phase oxidation with H2O2 [kg S/timestep]
             AD05(I,J,L,6) = AD05(I,J,L,6) +
-     &                      ( L2S * State_Met%AD(I,J,L) / TCVV_S )
+     &                      ( 0.e+0_fp * State_Met%AD(I,J,L) / TCVV_S )
 
             ! P(SO4) from aqueous-phase oxidation with O3 [kg S/timestep]
             AD05(I,J,L,7) = AD05(I,J,L,7) +
-     &                      ( L3S * State_Met%AD(I,J,L) /
+     &                      ( 0.e+0_fp * State_Met%AD(I,J,L) /
      &                      TCVV_S )
 
             ! P(SO4) from aqueous-phase oxidation with O2 metal-catalyzed
             ! [kg S/timestep]
             AD05(I,J,L,8) = AD05(I,J,L,8) +
-     &                      ( L4S * State_Met%AD(I,J,L) / TCVV_S )
+     &                      ( 0.e+0_fp * State_Met%AD(I,J,L) / TCVV_S )
 
             ! P(SO4) from O3 oxidation in sea-salt aerosols [kg S/timestep]
             AD05(I,J,L,9) = AD05(I,J,L,9) +
-     &                      ( (PSO4E + PSO4F) * State_Met%AD(I,J,L) /
+     &                      ( 0.e+0_fp * State_Met%AD(I,J,L) /
      &                      TCVV_S )
 
             ! P(SO4) from aqueous-phase oxidation with HOBr [kg S/timestep]
             AD05(I,J,L,16) = AD05(I,J,L,16) +
-     &                       (L5S* State_Met%AD(I,J,L)/TCVV_S)
+     &                       ( 0.e+0_fp * State_Met%AD(I,J,L)/TCVV_S)
 
             ! P(SO4) by SRo3
             AD05(I,J,L,17) = AD05(I,J,L,17) +
-     &                       (0.e+0_fp*State_Met%AD(I,J,L)/TCVV_S)
+     &                       (0.e+0_fp * State_Met%AD(I,J,L)/TCVV_S)
 
             ! P(SO4) by SRhobr
             AD05(I,J,L,18) = AD05(I,J,L,18) +
-     &                       (0.e+0_fp*State_Met%AD(I,J,L)/TCVV_S)
+     &                       (0.e+0_fp * State_Met%AD(I,J,L)/TCVV_S)
 
             ! P(SO4) by o3s
             AD05(I,J,L,19) = AD05(I,J,L,19) +
-     &                       (0.e+0_fp*State_Met%AD(I,J,L)/TCVV_S)
+     &                       (0.e+0_fp * State_Met%AD(I,J,L)/TCVV_S)
 
             ! Cloud pH
             AD05(I,J,L,20) = AD05(I,J,L,20) + HPLUS
@@ -4764,26 +4449,26 @@
             ! P(SO4) from gas-phase oxidation [kg S/s]
             IF ( State_Diag%Archive_ProdSO4fromGasPhase ) THEN
                State_Diag%ProdSO4fromGasPhase(I,J,L) = 
-     &            ( L1  * State_Met%AD(I,J,L) / TCVV_S ) / DTCHEM
+     &            ( 0.e+0_fp  * State_Met%AD(I,J,L) / TCVV_S ) / DTCHEM
             ENDIF
 
             ! P(SO4) from aqueous-phase oxidation with H2O2 [kg S/s]
             IF ( State_Diag%Archive_ProdSO4fromH2O2inCloud ) THEN
                State_Diag%ProdSO4fromH2O2inCloud(I,J,L) =
-     &            ( L2S * State_Met%AD(I,J,L) / TCVV_S ) / DTCHEM
+     &            ( 0.e+0_fp * State_Met%AD(I,J,L) / TCVV_S ) / DTCHEM
             ENDIF
 
             ! P(SO4) from aqueous-phase oxidation with O3 [kg S/s]
             IF ( State_Diag%Archive_ProdSO4fromO3InCloud ) THEN
                State_Diag%ProdSO4fromO3InCloud(I,J,L) =
-     &            ( L3S * State_Met%AD(I,J,L) / TCVV_S ) /
+     &            ( 0.e+0_fp * State_Met%AD(I,J,L) / TCVV_S ) /
      &            DTCHEM
             ENDIF
 
             ! P(SO4) from aqueous-phase oxidation with HOBr [kg S/s]
             IF ( State_Diag%Archive_ProdSO4fromHOBrInCloud ) THEN
                State_Diag%ProdSO4fromHOBrInCloud(I,J,L) =
-     &            ( L5S * State_Met%AD(I,J,L) / TCVV_S ) /
+     &            ( 0.e+0_fp * State_Met%AD(I,J,L) / TCVV_S ) /
      &            DTCHEM
             ENDIF
 
@@ -4791,13 +4476,13 @@
             ! [kg S/s]
             IF ( State_Diag%Archive_ProdSO4fromO2InCloudMetal ) THEN
                State_Diag%ProdSO4fromO2InCloudMetal(I,J,L) = 
-     &            ( L4S * State_Met%AD(I,J,L) / TCVV_S ) / DTCHEM
+     &            ( 0.e+0_fp * State_Met%AD(I,J,L) / TCVV_S ) / DTCHEM
             ENDIF
 
             ! P(SO4) from O3 in sea salt aerosol [kg S/s]
             IF ( State_Diag%Archive_ProdSO4fromO3inSeaSalt ) THEN
                State_Diag%ProdSO4fromO3inSeaSalt(I,J,L) = 
-     &            ( ( PSO4E + PSO4F ) * State_Met%AD(I,J,L) / TCVV_S ) /
+     &            ( 0.e+0_fp * State_Met%AD(I,J,L) / TCVV_S ) /
      &            DTCHEM
             ENDIF
 
