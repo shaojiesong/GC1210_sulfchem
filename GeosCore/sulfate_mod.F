@@ -3027,6 +3027,14 @@
       REAL(fp),  PARAMETER  :: HPLUS_45  = 3.16227766016837953e-5_fp  !pH = 4.5
       REAL(fp),  PARAMETER  :: HPLUS_50  = 1.0e-5_fp  !pH = 5.0
       REAL(fp),  PARAMETER  :: MINDAT    = 1.e-20_fp
+      REAL(fp),  PARAMETER  :: ALPHA_SO2 = 1.1e-1_fp
+      REAL(fp),  PARAMETER  :: ALPHA_O3  =  5.e-4_fp
+      REAL(fp),  PARAMETER  :: ALPHA_H2O2= 2.3e-1_fp
+      REAL(fp),  PARAMETER  :: ALPHA_HCHO=  2.e-2_fp
+      REAL(fp),  PARAMETER  :: ALPHA_NO2 =  2.e-4_fp
+      REAL(fp),  PARAMETER  :: ALPHA_HONO=  9.e-2_fp
+      REAL(fp),  PARAMETER  :: ALPHA_HOBr=  6.e-1_fp
+      REAL(fp),  PARAMETER  :: RADI      =  1.e-5_fp !m
 !
 ! !LOCAL VARIABLES:
 !
@@ -3050,13 +3058,18 @@
       REAL(fp)              :: AlkA,   AlkC
       REAL(fp)              :: Kt1,    Kt2
       REAL(fp)              :: PSO4E,  PSO4F,   Kt1N,    Kt2N
-      REAL(fp)              :: XX, IonStr, TNVC, TNA, TCL, THMSA ! SJS
+      REAL(fp)              :: XX, XY, IonStr, TNVC, TNA, TCL, THMSA ! SJS
       REAL(fp)              :: TFAA, TAAA, TMSA, LH1S, LH2S, LH3S ! SJS
       REAL(fp)              :: ATSO4, ATCA, ATK, ATMG, ATCL, ATNA ! SJS
       REAL(fp)              :: ATNH3, ATNO3, XRH, TNO2, TSO2      ! SJS
       REAL(fp)              :: ALWC, AHPLUS, AIonStr, AWVF        ! SJS
       REAL(fp)              :: L6, L6S       ! SJS
-      REAL(fp)              :: TauC, TauC2, WTAREA, XMMS, DFKG    ! SJS
+      REAL(fp)              :: TauC, WTAREA ! SJS
+      REAL(fp)              :: XMMS_SO2, XMMS_H2O2, XMMS_O3, XMMS_NO2
+      REAL(fp)              :: XMMS_HONO, XMMS_HCHO, XMMS_HOBr ! SJS
+      REAL(fp)              :: DFKG_SO2, DFKG_H2O2, DFKG_O3, DFKG_NO2
+      REAL(fp)              :: DFKG_HONO, DFKG_HCHO, DFKG_HOBr ! SJS
+
       REAL(fp)              :: HPLUS, SO4nss, TNH3, TNO3, GNO3, ANIT
       REAL(fp)              :: TANIT
       !tdf 03/02/2K9
@@ -3197,7 +3210,7 @@
 !$OMP+PRIVATE( KaqHONO, KaqNO2, HONO0, NO20, L8, L9, L8S, L9S          ) !SJS
 !$OMP+PRIVATE( KdHMSA, L6, L6S, HCHO0, HMSA0, HMSC0, HMSP0             ) !SJS
 !$OMP+PRIVATE( Kt1, Kt2, SO2_ss, Kt1N, Kt2N                            )
-!$OMP+PRIVATE( PSO4E, PSO4F, XX, IonStr, TNVC, TNA, TCL, THMSA         ) !SJS
+!$OMP+PRIVATE( PSO4E, PSO4F, XX, XY, IonStr, TNVC, TNA, TCL, THMSA     ) !SJS
 !$OMP+PRIVATE( TFAA, TAAA, TMSA, TSO2, TNO2, LH1S, LH2S, LH3S          ) !SJS
 !$OMP+PRIVATE( ATSO4, ATCA, ATK, ATMG, ATCL, ATNA                      ) !SJS
 !$OMP+PRIVATE( ATNH3, ATNO3, ALWC, AHPLUS, AIonStr, AWVF, XRH          ) !SJS
@@ -3210,7 +3223,10 @@
 !$OMP+PRIVATE( L4, L4S, L5S, KaqO2,  DUST, Mn_ant, Mn_nat, Mn_tot      )
 !$OMP+PRIVATE( Fe_ant, Fe_nat, Fe_tot, Fe_d, Mn_d,   FeIII,  MnII      )
 !$OMP+PRIVATE( Fe_d_ant, Fe_d_nat, Mn_d_ant, Mn_d_nat, KHCHO2          ) !SJS
-!$OMP+PRIVATE( TauC, TauC2, WTAREA, XMMS, DFKG, Qcst, q, qq, TK1, TK0  ) !SJS
+!$OMP+PRIVATE( TauC, WTAREA, Qcst, q, qq, TK1, TK0                     ) !SJS
+!$OMP+PRIVATE( DFKG_SO2, DFKG_H2O2, DFKG_O3, DFKG_NO2, DFKG_HONO       ) !SJS
+!$OMP+PRIVATE( DFKG_HOBr, DFKG_HCHO, XMMS_SO2, XMMS_H2O2, XMMS_O3      ) !SJS
+!$OMP+PRIVATE( XMMS_HONO, XMMS_HCHO, XMMS_HOBr, XMMS_NO2               ) !SJS
 !$OMP+PRIVATE( TK1_2, TLS, DT2, TS2, I2, HMSA_2, dK0                   ) !SJS
 !$OMP+PRIVATE( TLS0, L2S0, L3S0, L4S0, L5S0, L6S0, L7S0, L8S0, L9S0    ) !SJS
 !$OMP+PRIVATE( O3_2, H2O2_2, NO2_2, HONO_2, HOBr_2, HCHO_2, SO2_2      ) !SJS
@@ -3540,23 +3556,42 @@
             ! WTAREA = [m2 cloud water sfc area m-3 air]
             ! LWC = [m3 H2O / m3 air]
             ! a = 10 [um] = 1e-5 [m]
-            WTAREA = 3.e+0_fp * LWC / 1.e-5_fp
+            WTAREA = 3.e+0_fp * LWC / RADI
 
             ! XMMS = Mean molecular speed [cm/s]
-            ! MW_SO2 = 64 [g/mol]
-            XMMS = SQRT( 2.117e+8_fp * TK / 64e+0_fp )
+            XMMS_SO2  = SQRT( 2.117e+8_fp * TK / 64e+0_fp )
+            XMMS_H2O2 = SQRT( 2.117e+8_fp * TK / 34e+0_fp )
+            XMMS_O3   = SQRT( 2.117e+8_fp * TK / 48e+0_fp )
+            XMMS_NO2  = SQRT( 2.117e+8_fp * TK / 46e+0_fp )
+            XMMS_HONO = SQRT( 2.117e+8_fp * TK / 47e+0_fp )
+            XMMS_HOBr = SQRT( 2.117e+8_fp * TK / 97e+0_fp )
+            XMMS_HCHO = SQRT( 2.117e+8_fp * TK / 30e+0_fp )
 
             ! DFKG = Gas phase diffusion coeff [cm2/s]
             ! State_Met%AIRNUMDEN = dry air number density [molec/cm3]
-            DFKG = 9.45e+17_fp / State_Met%AIRNUMDEN(I,J,L) *
-     &             SQRT(TK) * SQRT(3.472e-2_fp+(1.e+0_fp/64e+0_fp))
+            DFKG_SO2  = 9.45e+17_fp / State_Met%AIRNUMDEN(I,J,L) *
+     &           SQRT(TK) * SQRT(3.472e-2_fp+(1.e+0_fp/64e+0_fp))
+
+            DFKG_H2O2 = 9.45e+17_fp / State_Met%AIRNUMDEN(I,J,L) *
+     &           SQRT(TK) * SQRT(3.472e-2_fp+(1.e+0_fp/34e+0_fp))
+
+            DFKG_O3   = 9.45e+17_fp / State_Met%AIRNUMDEN(I,J,L) *
+     &           SQRT(TK) * SQRT(3.472e-2_fp+(1.e+0_fp/48e+0_fp))
+
+            DFKG_NO2  = 9.45e+17_fp / State_Met%AIRNUMDEN(I,J,L) *
+     &           SQRT(TK) * SQRT(3.472e-2_fp+(1.e+0_fp/46e+0_fp))
+
+            DFKG_HONO = 9.45e+17_fp / State_Met%AIRNUMDEN(I,J,L) *
+     &           SQRT(TK) * SQRT(3.472e-2_fp+(1.e+0_fp/47e+0_fp))
+
+            DFKG_HOBr = 9.45e+17_fp / State_Met%AIRNUMDEN(I,J,L) *
+     &           SQRT(TK) * SQRT(3.472e-2_fp+(1.e+0_fp/97e+0_fp))
+
+            DFKG_HCHO = 9.45e+17_fp / State_Met%AIRNUMDEN(I,J,L) *
+     &           SQRT(TK) * SQRT(3.472e-2_fp+(1.e+0_fp/30e+0_fp))
 
             ! Calculate Kinetic Limitation (lifetime ~ s)
-            TauC = (1.e+0_fp-FC)*3.6e+3_fp +
-     &             1.e-5_fp/WTAREA/(DFKG/1.e+4_fp) +
-     &             4.e+0_fp/WTAREA/(XMMS/1.e+2_fp)/2.3e-1_fp
-
-            TauC2= (1.e+0_fp-FC)*3.6e+3_fp
+            TauC= (1.e+0_fp-FC)*3.6e+3_fp
 
             !===========================================================
             ! NOTE...Sulfate production from aquatic reactions of SO2 
@@ -3891,6 +3926,85 @@
             KaqHOBr = KaqHOBr * qq
             KaqH2O2 = KaqH2O2 * qq
 
+            ! gaseous and interfacial limitation
+            IF ( KaqO3*O30 > MINDAT ) THEN
+               XX=1.e+0_fp/(1.e+0_fp/KaqO3+
+     &          RADI*O30/WTAREA/(DFKG_SO2/1.e+4_fp)+
+     &          4.e+0_fp*O30/WTAREA/(XMMS_SO2/1.e+2_fp)/ALPHA_SO2)
+               XY=1.e+0_fp/(1.e+0_fp/KaqO3+
+     &          RADI*SO2_ss/WTAREA/(DFKG_O3/1.e+4_fp)+
+     &          4.e+0_fp*SO2_ss/WTAREA/(XMMS_O3/1.e+2_fp)/ALPHA_O3)
+               KaqO3 = MIN( KaqO3, XX, XY )
+               KaqO3 = MAX( 0.e+0_fp, KaqO3 )
+            ELSE
+               KaqO3 = 0.e+0_fp
+            ENDIF
+
+            IF ( KaqNO2*NO20 > MINDAT ) THEN
+               XX=1.e+0_fp/(1.e+0_fp/KaqNO2+
+     &          RADI*NO20/WTAREA/(DFKG_SO2/1.e+4_fp)+
+     &          4.e+0_fp*NO20/WTAREA/(XMMS_SO2/1.e+2_fp)/ALPHA_SO2)
+               XY=1.e+0_fp/(1.e+0_fp/KaqNO2+
+     &          RADI*SO2_ss/WTAREA/(DFKG_NO2/1.e+4_fp)+
+     &          4.e+0_fp*SO2_ss/WTAREA/(XMMS_NO2/1.e+2_fp)/ALPHA_NO2)
+               KaqNO2 = MIN( KaqNO2, XX, XY )
+               KaqNO2 = MAX( 0.e+0_fp, KaqNO2 )
+            ELSE
+               KaqNO2 = 0.e+0_fp
+            ENDIF
+
+            IF ( KaqHONO*HONO0 > MINDAT ) THEN
+               XX=1.e+0_fp/(1.e+0_fp/KaqHONO+
+     &          RADI*HONO0/WTAREA/(DFKG_SO2/1.e+4_fp)+
+     &          4.e+0_fp*HONO0/WTAREA/(XMMS_SO2/1.e+2_fp)/ALPHA_SO2)
+               XY=1.e+0_fp/(1.e+0_fp/KaqHONO+
+     &          RADI*SO2_ss/WTAREA/(DFKG_HONO/1.e+4_fp)+
+     &          4.e+0_fp*SO2_ss/WTAREA/(XMMS_HONO/1.e+2_fp)/ALPHA_HONO)
+               KaqHONO = MIN( KaqHONO, XX, XY )
+               KaqHONO = MAX( 0.e+0_fp, KaqHONO )
+            ELSE
+               KaqHONO = 0.e+0_fp
+            ENDIF
+
+            IF ( KaqH2O2*H2O20 > MINDAT ) THEN
+               XX=1.e+0_fp/(1.e+0_fp/KaqH2O2+
+     &          RADI*H2O20/WTAREA/(DFKG_SO2/1.e+4_fp)+
+     &          4.e+0_fp*H2O20/WTAREA/(XMMS_SO2/1.e+2_fp)/ALPHA_SO2)
+               XY=1.e+0_fp/(1.e+0_fp/KaqH2O2+
+     &          RADI*SO2_ss/WTAREA/(DFKG_H2O2/1.e+4_fp)+
+     &          4.e+0_fp*SO2_ss/WTAREA/(XMMS_H2O2/1.e+2_fp)/ALPHA_H2O2)
+               KaqH2O2 = MIN( KaqH2O2, XX, XY )
+               KaqH2O2 = MAX( 0.e+0_fp, KaqH2O2 )
+            ELSE
+               KaqH2O2 = 0.e+0_fp
+            ENDIF
+
+            IF ( KaqHOBr*HOBr0 > MINDAT ) THEN
+               XX=1.e+0_fp/(1.e+0_fp/KaqHOBr+
+     &          RADI*HOBr0/WTAREA/(DFKG_SO2/1.e+4_fp)+
+     &          4.e+0_fp*HOBr0/WTAREA/(XMMS_SO2/1.e+2_fp)/ALPHA_SO2)
+               XY=1.e+0_fp/(1.e+0_fp/KaqHOBr+
+     &          RADI*SO2_ss/WTAREA/(DFKG_HOBr/1.e+4_fp)+
+     &          4.e+0_fp*SO2_ss/WTAREA/(XMMS_HOBr/1.e+2_fp)/ALPHA_HOBr)
+               KaqHOBr = MIN( KaqHOBr, XX, XY )
+               KaqHOBr = MAX( 0.e+0_fp, KaqHOBr )
+            ELSE
+               KaqHOBr = 0.e+0_fp
+            ENDIF
+
+            IF ( KaqHCHO*HCHO0 > MINDAT ) THEN
+               XX=1.e+0_fp/(1.e+0_fp/KaqHCHO+
+     &          RADI*HCHO0/WTAREA/(DFKG_SO2/1.e+4_fp)+
+     &          4.e+0_fp*HCHO0/WTAREA/(XMMS_SO2/1.e+2_fp)/ALPHA_SO2)
+               XY=1.e+0_fp/(1.e+0_fp/KaqHCHO+
+     &          RADI*SO2_ss/WTAREA/(DFKG_HCHO/1.e+4_fp)+
+     &          4.e+0_fp*SO2_ss/WTAREA/(XMMS_HCHO/1.e+2_fp)/ALPHA_HCHO)
+               KaqHCHO = MIN( KaqHCHO, XX, XY )
+               KaqHCHO = MAX( 0.e+0_fp, KaqHCHO )
+            ELSE
+               KaqHCHO = 0.e+0_fp
+            ENDIF
+
             ! Initialize
             O3_2   = O30
             H2O2_2 = H2O20
@@ -4090,9 +4204,9 @@
             !----------------------------------------------------------
 
             ! box-average first-order rate vs. HMSA
-            dK0 = FC / ( TauC2 + 1.e+0_fp/KdHMSA )
+            dK0 = FC / ( TauC + 1.e+0_fp/KdHMSA )
             dK0 = MAX( dK0, 0.e+0_fp )
-            dK0 = MIN( dK0, FC/TauC2 )
+            dK0 = MIN( dK0, FC/TauC )
             dK0 = MIN( dK0, FC*KdHMSA )
 
             ! box-average loss of HMSA
