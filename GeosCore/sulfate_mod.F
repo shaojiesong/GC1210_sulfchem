@@ -3489,6 +3489,7 @@
          Qcst    = 0.e+0_fp ! SJS 20200206
          q       = 0.e+0_fp ! SJS 20200206
          qq      = 0.e+0_fp ! SJS 20200206
+         TauC    = 0.e+0_fp ! SJS 20200221
          KdHMSA  = 0.e+0_fp
          KHCHO2  = 0.e+0_fp
          KaqO3   = 0.e+0_fp
@@ -3745,6 +3746,12 @@
             ! Add THMSA, SJS 20190608
             TSO2 = SO2_ss
             TNO2 = HONO0
+
+            ! SJS-OPTION
+            IF ( 1 > 0 ) THEN
+               TFAA  = TFAA * 4.e+0_fp
+               TAAA  = TAAA * 4.e+0_fp
+            ENDIF
 
             ! SJS-OPTION
             IF ( -1 > 0 ) THEN
@@ -7896,7 +7903,8 @@
       !=================================================================
 
       ! Calculate Henry's Law constant for atmospheric temperature
-      HCO3  = 1.13e-2_fp * EXP( 8.51e+0_fp 
+      ! Update O3 Henry Law constant SJS 20200222
+      HCO3  = 1.e-2_fp * EXP( 8.51e+0_fp
      &      * ( 298.15e+0_fp / T - 1.e+0_fp ) )
 
       XO3g  = 1.e+0_fp / ( 1.e+0_fp + ( HCO3 * R * T * LWC ) )
