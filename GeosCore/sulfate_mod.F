@@ -3028,7 +3028,7 @@
       REAL(fp),  PARAMETER  :: HPLUS_50  = 1.0e-5_fp  !pH = 5.0
       REAL(fp),  PARAMETER  :: MINDAT    = 1.e-20_fp
       REAL(fp),  PARAMETER  :: ALPHA_SO2 = 1.1e-1_fp
-      REAL(fp),  PARAMETER  :: ALPHA_O3  =  5.e-4_fp
+      REAL(fp),  PARAMETER  :: ALPHA_O3  =  2.e-2_fp
       REAL(fp),  PARAMETER  :: ALPHA_H2O2= 2.3e-1_fp
       REAL(fp),  PARAMETER  :: ALPHA_HCHO=  2.e-2_fp
       REAL(fp),  PARAMETER  :: ALPHA_NO2 =  2.e-4_fp
@@ -3748,7 +3748,7 @@
             TNO2 = HONO0
 
             ! SJS-OPTION
-            IF ( 1 > 0 ) THEN
+            IF ( -1 > 0 ) THEN
                TFAA  = TFAA * 4.e+0_fp
                TAAA  = TAAA * 4.e+0_fp
             ENDIF
@@ -4243,7 +4243,7 @@
 
             ! SJS-OPTION
             ! using new cloud pH to redo calculation
-            IF ( 1 > 0 ) THEN
+            IF ( -1 > 0 ) THEN
 
             ! update SO4 and HMSA to estimate pH
             SO4nss = ( Spc(I,J,L,id_SO4) + 0.5e+0_fp * (
