@@ -4243,7 +4243,7 @@
 
             ! SJS-OPTION
             ! using new cloud pH to redo calculation
-            IF ( -1 > 0 ) THEN
+            IF ( 1 > 0 ) THEN
 
             ! update SO4 and HMSA to estimate pH
             SO4nss = ( Spc(I,J,L,id_SO4) + 0.5e+0_fp * (
@@ -4785,51 +4785,64 @@
          End If
 
 !GanLuo
-         PSO4s(I,J,L)   = ( PSO4_SO2(I,J,L) ) *
-     &                    State_Met%AD(I,J,L) / ( AIRMW /
-     &                    State_Chm%SpcData(id_SO4)%Info%emMW_g )
 
+         PSO4s(I,J,L)   = 0.e+0_fp
+         PSO4P1s(I,J,L) = 0.e+0_fp
+         PSO4P2s(I,J,L) = 0.e+0_fp
+         PSO4P3s(I,J,L) = 0.e+0_fp
+         PSO4P4s(I,J,L) = 0.e+0_fp
+         PSO4P5s(I,J,L) = 0.e+0_fp
+         PSO4P6s(I,J,L) = 0.e+0_fp
+         PSO4P7s(I,J,L) = 0.e+0_fp
+         PHMSAs(I,J,L)  = 0.e+0_fp
+         PHMSCs(I,J,L)  = 0.e+0_fp
+         PHMSPs(I,J,L)  = 0.e+0_fp
+
+!         PSO4s(I,J,L)   = ( PSO4_SO2(I,J,L) ) *
+!     &                    State_Met%AD(I,J,L) / ( AIRMW /
+!     &                    State_Chm%SpcData(id_SO4)%Info%emMW_g )
+!
 !SJS 20191124
-         PSO4P1s(I,J,L) = ( PSO4P1_SO2(I,J,L) ) *
-     &                    State_Met%AD(I,J,L) / ( AIRMW /
-     &                    State_Chm%SpcData(id_SO4P1)%Info%emMW_g )
-
-         PSO4P2s(I,J,L) = ( PSO4P2_SO2(I,J,L) ) *
-     &                    State_Met%AD(I,J,L) / ( AIRMW /
-     &                    State_Chm%SpcData(id_SO4P2)%Info%emMW_g )
-
-         PSO4P3s(I,J,L) = ( PSO4P3_SO2(I,J,L) ) *
-     &                    State_Met%AD(I,J,L) / ( AIRMW /
-     &                    State_Chm%SpcData(id_SO4P3)%Info%emMW_g )
-
-         PSO4P4s(I,J,L) = ( PSO4P4_SO2(I,J,L) ) *
-     &                    State_Met%AD(I,J,L) / ( AIRMW /
-     &                    State_Chm%SpcData(id_SO4P4)%Info%emMW_g )
-
-         PSO4P5s(I,J,L) = ( PSO4P5_SO2(I,J,L) ) *
-     &                    State_Met%AD(I,J,L) / ( AIRMW /
-     &                    State_Chm%SpcData(id_SO4P5)%Info%emMW_g )
-
-         PSO4P6s(I,J,L) = ( PSO4P6_SO2(I,J,L) ) *
-     &                    State_Met%AD(I,J,L) / ( AIRMW /
-     &                    State_Chm%SpcData(id_SO4P6)%Info%emMW_g )
-
-         PSO4P7s(I,J,L) = ( PSO4P7_SO2(I,J,L) ) *
-     &                    State_Met%AD(I,J,L) / ( AIRMW /
-     &                    State_Chm%SpcData(id_SO4P7)%Info%emMW_g )
-
+!         PSO4P1s(I,J,L) = ( PSO4P1_SO2(I,J,L) ) *
+!     &                    State_Met%AD(I,J,L) / ( AIRMW /
+!     &                    State_Chm%SpcData(id_SO4P1)%Info%emMW_g )
+!
+!         PSO4P2s(I,J,L) = ( PSO4P2_SO2(I,J,L) ) *
+!     &                    State_Met%AD(I,J,L) / ( AIRMW /
+!     &                    State_Chm%SpcData(id_SO4P2)%Info%emMW_g )
+!
+!         PSO4P3s(I,J,L) = ( PSO4P3_SO2(I,J,L) ) *
+!     &                    State_Met%AD(I,J,L) / ( AIRMW /
+!     &                    State_Chm%SpcData(id_SO4P3)%Info%emMW_g )
+!
+!         PSO4P4s(I,J,L) = ( PSO4P4_SO2(I,J,L) ) *
+!     &                    State_Met%AD(I,J,L) / ( AIRMW /
+!     &                    State_Chm%SpcData(id_SO4P4)%Info%emMW_g )
+!
+!         PSO4P5s(I,J,L) = ( PSO4P5_SO2(I,J,L) ) *
+!     &                    State_Met%AD(I,J,L) / ( AIRMW /
+!     &                    State_Chm%SpcData(id_SO4P5)%Info%emMW_g )
+!
+!         PSO4P6s(I,J,L) = ( PSO4P6_SO2(I,J,L) ) *
+!     &                    State_Met%AD(I,J,L) / ( AIRMW /
+!     &                    State_Chm%SpcData(id_SO4P6)%Info%emMW_g )
+!
+!         PSO4P7s(I,J,L) = ( PSO4P7_SO2(I,J,L) ) *
+!     &                    State_Met%AD(I,J,L) / ( AIRMW /
+!     &                    State_Chm%SpcData(id_SO4P7)%Info%emMW_g )
+!
 !SJS 20190630
-         PHMSAs(I,J,L)  = ( PHMSA_SO2(I,J,L) ) *
-     &                    State_Met%AD(I,J,L) / ( AIRMW /
-     &                    State_Chm%SpcData(id_HMSA)%Info%emMW_g )
-
-         PHMSCs(I,J,L)  = ( PHMSC_SO2(I,J,L) ) *
-     &                    State_Met%AD(I,J,L) / ( AIRMW /
-     &                    State_Chm%SpcData(id_HMSC)%Info%emMW_g )
-
-         PHMSPs(I,J,L)  = ( PHMSP_SO2(I,J,L) ) *
-     &                    State_Met%AD(I,J,L) / ( AIRMW /
-     &                    State_Chm%SpcData(id_HMSP)%Info%emMW_g )
+!         PHMSAs(I,J,L)  = ( PHMSA_SO2(I,J,L) ) *
+!     &                    State_Met%AD(I,J,L) / ( AIRMW /
+!     &                    State_Chm%SpcData(id_HMSA)%Info%emMW_g )
+!
+!         PHMSCs(I,J,L)  = ( PHMSC_SO2(I,J,L) ) *
+!     &                    State_Met%AD(I,J,L) / ( AIRMW /
+!     &                    State_Chm%SpcData(id_HMSC)%Info%emMW_g )
+!
+!         PHMSPs(I,J,L)  = ( PHMSP_SO2(I,J,L) ) *
+!     &                    State_Met%AD(I,J,L) / ( AIRMW /
+!     &                    State_Chm%SpcData(id_HMSP)%Info%emMW_g )
 
 #if   defined( TOMAS )
 !         PSO4_SO2AQ(I,J,L) = L2S + L3S ! For TOMAS microphysics
