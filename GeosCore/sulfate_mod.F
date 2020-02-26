@@ -3028,7 +3028,7 @@
       REAL(fp),  PARAMETER  :: HPLUS_50  = 1.0e-5_fp  !pH = 5.0
       REAL(fp),  PARAMETER  :: MINDAT    = 1.e-20_fp
       REAL(fp),  PARAMETER  :: ALPHA_SO2 = 1.1e-1_fp
-      REAL(fp),  PARAMETER  :: ALPHA_O3  =  2.e-2_fp
+      REAL(fp),  PARAMETER  :: ALPHA_O3  =  4.e-2_fp
       REAL(fp),  PARAMETER  :: ALPHA_H2O2= 2.3e-1_fp
       REAL(fp),  PARAMETER  :: ALPHA_HCHO=  2.e-2_fp
       REAL(fp),  PARAMETER  :: ALPHA_NO2 =  2.e-4_fp
@@ -4243,7 +4243,7 @@
 
             ! SJS-OPTION
             ! using new cloud pH to redo calculation
-            IF ( 1 > 0 ) THEN
+            IF ( -1 > 0 ) THEN
 
             ! update SO4 and HMSA to estimate pH
             SO4nss = ( Spc(I,J,L,id_SO4) + 0.5e+0_fp * (
@@ -4786,6 +4786,9 @@
 
 !GanLuo
 
+      ! SJS-OPTION
+      IF ( -1 > 0 ) THEN
+
          PSO4s(I,J,L)   = 0.e+0_fp
          PSO4P1s(I,J,L) = 0.e+0_fp
          PSO4P2s(I,J,L) = 0.e+0_fp
@@ -4798,51 +4801,53 @@
          PHMSCs(I,J,L)  = 0.e+0_fp
          PHMSPs(I,J,L)  = 0.e+0_fp
 
-!         PSO4s(I,J,L)   = ( PSO4_SO2(I,J,L) ) *
-!     &                    State_Met%AD(I,J,L) / ( AIRMW /
-!     &                    State_Chm%SpcData(id_SO4)%Info%emMW_g )
-!
-!SJS 20191124
-!         PSO4P1s(I,J,L) = ( PSO4P1_SO2(I,J,L) ) *
-!     &                    State_Met%AD(I,J,L) / ( AIRMW /
-!     &                    State_Chm%SpcData(id_SO4P1)%Info%emMW_g )
-!
-!         PSO4P2s(I,J,L) = ( PSO4P2_SO2(I,J,L) ) *
-!     &                    State_Met%AD(I,J,L) / ( AIRMW /
-!     &                    State_Chm%SpcData(id_SO4P2)%Info%emMW_g )
-!
-!         PSO4P3s(I,J,L) = ( PSO4P3_SO2(I,J,L) ) *
-!     &                    State_Met%AD(I,J,L) / ( AIRMW /
-!     &                    State_Chm%SpcData(id_SO4P3)%Info%emMW_g )
-!
-!         PSO4P4s(I,J,L) = ( PSO4P4_SO2(I,J,L) ) *
-!     &                    State_Met%AD(I,J,L) / ( AIRMW /
-!     &                    State_Chm%SpcData(id_SO4P4)%Info%emMW_g )
-!
-!         PSO4P5s(I,J,L) = ( PSO4P5_SO2(I,J,L) ) *
-!     &                    State_Met%AD(I,J,L) / ( AIRMW /
-!     &                    State_Chm%SpcData(id_SO4P5)%Info%emMW_g )
-!
-!         PSO4P6s(I,J,L) = ( PSO4P6_SO2(I,J,L) ) *
-!     &                    State_Met%AD(I,J,L) / ( AIRMW /
-!     &                    State_Chm%SpcData(id_SO4P6)%Info%emMW_g )
-!
-!         PSO4P7s(I,J,L) = ( PSO4P7_SO2(I,J,L) ) *
-!     &                    State_Met%AD(I,J,L) / ( AIRMW /
-!     &                    State_Chm%SpcData(id_SO4P7)%Info%emMW_g )
-!
-!SJS 20190630
-!         PHMSAs(I,J,L)  = ( PHMSA_SO2(I,J,L) ) *
-!     &                    State_Met%AD(I,J,L) / ( AIRMW /
-!     &                    State_Chm%SpcData(id_HMSA)%Info%emMW_g )
-!
-!         PHMSCs(I,J,L)  = ( PHMSC_SO2(I,J,L) ) *
-!     &                    State_Met%AD(I,J,L) / ( AIRMW /
-!     &                    State_Chm%SpcData(id_HMSC)%Info%emMW_g )
-!
-!         PHMSPs(I,J,L)  = ( PHMSP_SO2(I,J,L) ) *
-!     &                    State_Met%AD(I,J,L) / ( AIRMW /
-!     &                    State_Chm%SpcData(id_HMSP)%Info%emMW_g )
+      ELSE
+
+         PSO4s(I,J,L)   = ( PSO4_SO2(I,J,L) ) *
+     &                    State_Met%AD(I,J,L) / ( AIRMW /
+     &                    State_Chm%SpcData(id_SO4)%Info%emMW_g )
+
+         PSO4P1s(I,J,L) = ( PSO4P1_SO2(I,J,L) ) *
+     &                    State_Met%AD(I,J,L) / ( AIRMW /
+     &                    State_Chm%SpcData(id_SO4P1)%Info%emMW_g )
+
+         PSO4P2s(I,J,L) = ( PSO4P2_SO2(I,J,L) ) *
+     &                    State_Met%AD(I,J,L) / ( AIRMW /
+     &                    State_Chm%SpcData(id_SO4P2)%Info%emMW_g )
+
+         PSO4P3s(I,J,L) = ( PSO4P3_SO2(I,J,L) ) *
+     &                    State_Met%AD(I,J,L) / ( AIRMW /
+     &                    State_Chm%SpcData(id_SO4P3)%Info%emMW_g )
+
+         PSO4P4s(I,J,L) = ( PSO4P4_SO2(I,J,L) ) *
+     &                    State_Met%AD(I,J,L) / ( AIRMW /
+     &                    State_Chm%SpcData(id_SO4P4)%Info%emMW_g )
+
+         PSO4P5s(I,J,L) = ( PSO4P5_SO2(I,J,L) ) *
+     &                    State_Met%AD(I,J,L) / ( AIRMW /
+     &                    State_Chm%SpcData(id_SO4P5)%Info%emMW_g )
+
+         PSO4P6s(I,J,L) = ( PSO4P6_SO2(I,J,L) ) *
+     &                    State_Met%AD(I,J,L) / ( AIRMW /
+     &                    State_Chm%SpcData(id_SO4P6)%Info%emMW_g )
+
+         PSO4P7s(I,J,L) = ( PSO4P7_SO2(I,J,L) ) *
+     &                    State_Met%AD(I,J,L) / ( AIRMW /
+     &                    State_Chm%SpcData(id_SO4P7)%Info%emMW_g )
+
+         PHMSAs(I,J,L)  = ( PHMSA_SO2(I,J,L) ) *
+     &                    State_Met%AD(I,J,L) / ( AIRMW /
+     &                    State_Chm%SpcData(id_HMSA)%Info%emMW_g )
+
+         PHMSCs(I,J,L)  = ( PHMSC_SO2(I,J,L) ) *
+     &                    State_Met%AD(I,J,L) / ( AIRMW /
+     &                    State_Chm%SpcData(id_HMSC)%Info%emMW_g )
+
+         PHMSPs(I,J,L)  = ( PHMSP_SO2(I,J,L) ) *
+     &                    State_Met%AD(I,J,L) / ( AIRMW /
+     &                    State_Chm%SpcData(id_HMSP)%Info%emMW_g )
+
+      ENDIF
 
 #if   defined( TOMAS )
 !         PSO4_SO2AQ(I,J,L) = L2S + L3S ! For TOMAS microphysics
@@ -8281,8 +8286,12 @@
       ! We choose Jacob 1) 2) and Jacobson 0) here
       !=================================================================
       KO0 = 2.40e+4_fp
-      KO1 = 3.49e+12_fp * EXP( -4.83e+3_fp / T )  
-      KO2 = 7.32e+14_fp * EXP( -4.03e+3_fp / T )
+      ! Use kinetics in Hoyle et al. 2016 ACP
+      ! SJS 20200227
+      KO1  = 3.70E+5 * EXP( -18.56 * ((298./T) - 1.))
+      KO2  = 1.50E+9 * EXP( -17.72 * ((298./T) - 1.))
+!      KO1 = 3.49e+12_fp * EXP( -4.83e+3_fp / T )
+!      KO2 = 7.32e+14_fp * EXP( -4.03e+3_fp / T )
 
       !=================================================================
       ! O3 equilibrium reaction
@@ -8292,8 +8301,7 @@
       !=================================================================
 
       ! Calculate Henry's Law constant for atmospheric temperature
-      ! Update O3 Henry Law constant SJS 20200222
-      HCO3  = 1.e-2_fp * EXP( 8.51e+0_fp
+      HCO3  = 1.13e-2_fp * EXP( 8.51e+0_fp
      &      * ( 298.15e+0_fp / T - 1.e+0_fp ) )
 
       XO3g  = 1.e+0_fp / ( 1.e+0_fp + ( HCO3 * R * T * LWC ) )
