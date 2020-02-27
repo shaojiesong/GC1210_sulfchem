@@ -3028,7 +3028,7 @@
       REAL(fp),  PARAMETER  :: HPLUS_50  = 1.0e-5_fp  !pH = 5.0
       REAL(fp),  PARAMETER  :: MINDAT    = 1.e-20_fp
       REAL(fp),  PARAMETER  :: ALPHA_SO2 = 1.1e-1_fp
-      REAL(fp),  PARAMETER  :: ALPHA_O3  =  4.e-2_fp
+      REAL(fp),  PARAMETER  :: ALPHA_O3  =  1.e+0_fp
       REAL(fp),  PARAMETER  :: ALPHA_H2O2= 2.3e-1_fp
       REAL(fp),  PARAMETER  :: ALPHA_HCHO=  2.e-2_fp
       REAL(fp),  PARAMETER  :: ALPHA_NO2 =  2.e-4_fp
