@@ -3027,10 +3027,10 @@
       REAL(fp),  PARAMETER  :: HPLUS_45  = 3.16227766016837953e-5_fp  !pH = 4.5
       REAL(fp),  PARAMETER  :: HPLUS_50  = 1.0e-5_fp  !pH = 5.0
       REAL(fp),  PARAMETER  :: MINDAT    = 1.e-20_fp
-      REAL(fp),  PARAMETER  :: ALPHA_SO2 = 1.1e-1_fp
-      REAL(fp),  PARAMETER  :: ALPHA_O3  =  1.e+0_fp
+!      REAL(fp),  PARAMETER  :: ALPHA_SO2 = 1.1e-1_fp !T dependent
+      REAL(fp),  PARAMETER  :: ALPHA_O3  =  4.e-2_fp !Muller 2002
       REAL(fp),  PARAMETER  :: ALPHA_H2O2= 2.3e-1_fp
-      REAL(fp),  PARAMETER  :: ALPHA_HCHO=  2.e-2_fp
+      REAL(fp),  PARAMETER  :: ALPHA_HCHO=  4.e-2_fp !Davidovits 2006
       REAL(fp),  PARAMETER  :: ALPHA_NO2 =  2.e-4_fp
       REAL(fp),  PARAMETER  :: ALPHA_HONO=  9.e-2_fp
       REAL(fp),  PARAMETER  :: ALPHA_HOBr=  6.e-1_fp
@@ -3069,6 +3069,7 @@
       REAL(fp)              :: XMMS_HONO, XMMS_HCHO, XMMS_HOBr ! SJS
       REAL(fp)              :: DFKG_SO2, DFKG_H2O2, DFKG_O3, DFKG_NO2
       REAL(fp)              :: DFKG_HONO, DFKG_HCHO, DFKG_HOBr ! SJS
+      REAL(fp)              :: ALPHA_SO2 ! SJS
 
       REAL(fp)              :: HPLUS, SO4nss, TNH3, TNO3, GNO3, ANIT
       REAL(fp)              :: TANIT
@@ -3226,7 +3227,7 @@
 !$OMP+PRIVATE( TauC, WTAREA, Qcst, q, qq, TK1, TK0                     ) !SJS
 !$OMP+PRIVATE( DFKG_SO2, DFKG_H2O2, DFKG_O3, DFKG_NO2, DFKG_HONO       ) !SJS
 !$OMP+PRIVATE( DFKG_HOBr, DFKG_HCHO, XMMS_SO2, XMMS_H2O2, XMMS_O3      ) !SJS
-!$OMP+PRIVATE( XMMS_HONO, XMMS_HCHO, XMMS_HOBr, XMMS_NO2               ) !SJS
+!$OMP+PRIVATE( XMMS_HONO, XMMS_HCHO, XMMS_HOBr, XMMS_NO2, ALPHA_SO2    ) !SJS
 !$OMP+PRIVATE( TK1_2, TLS, DT2, TS2, I2, HMSA_2, dK0                   ) !SJS
 !$OMP+PRIVATE( TLS0, L2S0, L3S0, L4S0, L5S0, L6S0, L7S0, L8S0, L9S0    ) !SJS
 !$OMP+PRIVATE( O3_2, H2O2_2, NO2_2, HONO_2, HOBr_2, HCHO_2, SO2_2      ) !SJS
@@ -3591,8 +3592,12 @@
             DFKG_HCHO = 9.45e+17_fp / State_Met%AIRNUMDEN(I,J,L) *
      &           SQRT(TK) * SQRT(3.472e-2_fp+(1.e+0_fp/30e+0_fp))
 
+            ! Mass accommodation coefficient [unitless]
+            ALPHA_SO2 = 1.e+0_fp /
+     &           ( 1.e+0_fp + exp(14.7e+0_fp-3.825e+3_fp/TK) )
+
             ! Calculate Kinetic Limitation (lifetime ~ s)
-            TauC= (1.e+0_fp-FC)*3.6e+3_fp
+            TauC = (1.e+0_fp-FC)*3.6e+3_fp
 
             !===========================================================
             ! NOTE...Sulfate production from aquatic reactions of SO2 
