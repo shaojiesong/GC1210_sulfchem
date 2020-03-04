@@ -8185,11 +8185,12 @@
       !=================================================================
 
       ! [Jacob, 1986]
-      KH2O2 = 6.31e+14_fp * EXP( -4.76e+3_fp / T )  
+!      KH2O2 = 6.31e+14_fp * EXP( -4.76e+3_fp / T )
 
-!      ! [Jacobson, 1999]
-!      KH2O2 = 7.45e+0_fp7 * EXP( -15.96e+0_fp * ( (298.15/T) - 1.) ) / 
-!     &                  ( 1.e+0_fp + 13.e+0_fp * Hplus)
+      ! [Jacobson, 1999]
+      ! Based on Liu et al. 2019 PNAS SJS 2020304
+      KH2O2 = 7.45e+7_fp * EXP( -15.e+0_fp * ( (298./T) - 1.) ) /
+     &                  ( 1.e+0_fp + 13.e+0_fp * Hplus)
 
       !=================================================================
       ! Equilibrium reaction of SO2-H2O
@@ -8259,8 +8260,9 @@
       ! HCH2O2  = 7.45D4 * EXP( 24.48e+0_fp * ( 298.15e+0_fp / T - 1.e+0_fp) ) 
 
       ! [Jacobson,1999]
-      HCH2O2  = 7.45e+4_fp * EXP( 22.21e+0_fp * 
-     &         (298.15e+0_fp / T - 1.e+0_fp) )
+      ! Update HCH2O2 based on Sander 2015 ACP SJS 20200304
+      HCH2O2  = 9.1e+4_fp * EXP( 23.2e+0_fp *
+     &         (298.e+0_fp / T - 1.e+0_fp) )
       FHCH2O2 = HCH2O2 * (1.e+0_fp + (Kh1 / Hplus))
 
       XH2O2g  = 1.e+0_fp / ( 1.e+0_fp + ( FHCH2O2 * R * T * LWC ) )
