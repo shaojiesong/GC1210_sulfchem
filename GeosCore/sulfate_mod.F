@@ -3035,6 +3035,7 @@
       REAL(fp),  PARAMETER  :: ALPHA_HONO=  9.e-2_fp
       REAL(fp),  PARAMETER  :: ALPHA_HOBr=  6.e-1_fp
       REAL(fp),  PARAMETER  :: RADI      =  1.e-5_fp !m
+      REAL(fp),  PARAMETER  :: TauR      = 1.8e+3_fp !second
 !
 ! !LOCAL VARIABLES:
 !
@@ -3597,7 +3598,7 @@
      &           ( 1.e+0_fp + exp(14.7e+0_fp-3.825e+3_fp/TK) )
 
             ! Calculate Kinetic Limitation (lifetime ~ s)
-            TauC = (1.e+0_fp-FC)*3.6e+3_fp
+            TauC = (1.e+0_fp-FC)*TauR
 
             !===========================================================
             ! NOTE...Sulfate production from aquatic reactions of SO2 
