@@ -2539,23 +2539,26 @@
 !\\
 ! !INTERFACE:
 !
-      SUBROUTINE HETCHEM_RATE( ALWC,      T,         P,
-     &                         AHPLUS,    SO2,       KchemHCHO,
-     &                         KhetHCHO,  KhetdHMSA )
+      SUBROUTINE HETCHEM_RATE( ALWC,   T,        P,
+     &                         AHPLUS, AIonStr,
+     &                         Qcst2,  KhetHCHO, KhetdHMSA, KhetH2O2 )
+!
+      USE ERROR_MOD,    ONLY : ERROR_STOP
 !
 ! !INPUT PARAMETERS:
 !
       REAL(fp), INTENT(IN)  :: ALWC    ! Aerosol liq water content [m3/m3]
       REAL(fp), INTENT(IN)  :: T       ! Temperature [K]
       REAL(fp), INTENT(IN)  :: P       ! Dry air partial pressure [atm]
-      REAL(fp), INTENT(IN)  :: SO2     ! SO2  mixing ratio [v/v]
       REAL(fp), INTENT(IN)  :: AHPLUS  ! Aerosol H+ [mole/kg]
+      REAL(fp), INTENT(IN)  :: AIonStr ! Ionic Strength [mole/kg]
 !
 ! !OUTPUT PARAMETERS:
 !
-      REAL(fp), INTENT(OUT) :: KchemHCHO ! Reaction rate for HCHO [1/s]
-      REAL(fp), INTENT(OUT) :: KhetHCHO  ! Reaction rate for HCHO [1/s]
+      REAL(fp), INTENT(OUT) :: KhetHCHO  ! Reaction rate for HCHO [v/v/s]
       REAL(fp), INTENT(OUT) :: KhetdHMSA ! Decomposition [1/s]
+      REAL(fp), INTENT(OUT) :: KhetH2O2  ! Reaction rate for H2O2 [v/v/s]
+      REAL(fp), INTENT(OUT) :: Qcst2     ! Parameter for calculating Q
 !
 !EOP
 !------------------------------------------------------------------------------
@@ -2571,6 +2574,7 @@
 !
       REAL(fp)              :: KS1, KS2, HCSO2, FHCSO2
       REAL(fp)              :: XSO2G, XHSO3, XSO3
+      REAL(fp)              :: KH2O2, KH1, HCH2O2, FHCH2O2, XH2O2G, EF
       REAL(fp)              :: KHCHO1, KHCHO2, HCHCHO, FHCHCHO
       REAL(fp)              :: XHCHOg, Kw_T
 
@@ -2596,6 +2600,40 @@
      &        (Ks1*Ks2 / (AHplus*AHplus)))
 
       XSO2g  = 1.e+0_fp / ( 1.e+0_fp + ( FHCSO2 * R * T * ALWC ) )
+
+      ! Estimate Qcst2 SJS 20200305
+      Qcst2 = FHCSO2 * XSO2g * R * T * ALWC ! unitless
+
+      !=================================================================
+      ! HSO3- + H2O2 + H+ => SO4--
+      !=================================================================
+
+      ! Based on Liu et al. 2019 PNAS SJS 2020304
+      KH2O2 = 7.45e+7_fp * EXP( -15.e+0_fp * ( (298./T) - 1.) ) /
+     &                  ( 1.e+0_fp + 13.e+0_fp * AHplus)
+
+      Kh1 = 2.20e-12_fp * EXP( -12.52e+0_fp *
+     &     ( 298.15e+0_fp / T - 1.e+0_fp ) )
+
+      ! Update HCH2O2 based on Sander 2015 ACP SJS 20200304
+      HCH2O2  = 9.1e+4_fp * EXP( 23.2e+0_fp *
+     &         (298.e+0_fp / T - 1.e+0_fp) )
+      FHCH2O2 = HCH2O2 * (1.e+0_fp + (Kh1 / AHplus))
+
+      XH2O2g  = 1.e+0_fp / ( 1.e+0_fp + ( FHCH2O2 * R * T * ALWC ) )
+
+      ! Enhancement based on ionic strength
+      IF ( AIonStr >= 0.e+0_fp .AND. AIonStr <= 4.e+0_fp ) THEN
+         EF = 1.5e+0_fp
+      ELSEIF ( AIonStr > 4.e+0_fp ) THEN
+         EF = 1.e+1_fp ** ( log(AIonStr) - 1.2e+0_fp )
+      ELSE
+         CALL ERROR_STOP('error in EF', 'sulfate_mod.f')
+      ENDIF
+
+      ! Conversion rate from SO2 to SO4 via reaction with H2O2
+      KhetH2O2  = kh2o2 * Ks1 * HCH2O2 * HCSO2 * XH2O2g * XSO2g
+     &         * P * ALWC * R * T * EF           ! [v/v/s]
 
       !=================================================================
       !  Aqueous reactions of SO2 with HCHO, SJS 20190607
@@ -2661,10 +2699,8 @@
       XHCHOg  = 1.e+0_fp / ( 1.e+0_fp + ( FHCHCHO * R * T * ALWC ) )
 
       ! Conversion rate from SO2 to HMSA
-      KchemHCHO = (KHCHO1*XHSO3 + KHCHO2*XSO3)
-     &            * FHCSO2 * XSO2g * SO2 * P ! [1/s]
-
-      KhetHCHO = KchemHCHO * HCHCHO * XHCHOg * ALWC * R * T ! [1/s]
+      KhetHCHO = (KHCHO1*XHSO3 + KHCHO2*XSO3) * FHCSO2 * XSO2g
+     &           * P * HCHCHO * XHCHOg * ALWC * R * T ! [v/v/s]
 
       END SUBROUTINE HETCHEM_RATE
 !EOC
@@ -2681,17 +2717,17 @@
 !\\
 ! !INTERFACE:
 !
-      SUBROUTINE HETCHEM_SO2( I,         J,          L,
-     &                        T,         P,          XRH,
-     &                        SO2,       HCHO,       HMSA,
-     &                        LH1S,      LH2S,       LH3S,
-     &                        State_Met, State_Chm,
-     &                        ALWC,      AHPLUS,     AIonStr,   AWVF )
+      SUBROUTINE HETCHEM_SO2( I,         J,         L,
+     &                        T,         P,         XRH,
+     &                        SO2,       HCHO,      HMSA,    H2O2,
+     &                        SO2_2,     HCHO_2,    LH1S,    H2O2_2,
+     &                        ALWC,      AHPLUS,    AIonStr, AWVF,
+     &                        State_Met, State_Chm )
 !
 ! !USES:
 !
       USE CMN_SIZE_MOD
-      USE ERROR_MOD,          ONLY : IS_SAFE_EXP, ERROR_STOP
+      USE ERROR_MOD,          ONLY : IS_SAFE_EXP, ERROR_STOP, SAFE_DIV
       USE State_Chm_Mod,      ONLY : ChmState
       USE State_Met_Mod,      ONLY : MetState
       USE TIME_MOD,           ONLY : GET_TS_CHEM
@@ -2705,6 +2741,7 @@
       REAL(fp),       INTENT(IN)    :: SO2         ! mixing ratio [v/v]
       REAL(fp),       INTENT(IN)    :: HCHO        ! mixing ratio [v/v]
       REAL(fp),       INTENT(IN)    :: HMSA        ! mixing ratio [v/v]
+      REAL(fp),       INTENT(IN)    :: H2O2        ! mixing ratio [v/v]
       REAL(fp),       INTENT(IN)    :: ALWC        ! [m3/m3]
       REAL(fp),       INTENT(IN)    :: AHPLUS      ! [mol/kg]
       REAL(fp),       INTENT(IN)    :: AIonStr     ! Ionic Strength [mol/kg]
@@ -2712,9 +2749,10 @@
 !
 ! !OUTPUT PARAMETERS:
 !
+      REAL(fp),       INTENT(OUT)   :: SO2_2       ! mixing ratio [v/v]
+      REAL(fp),       INTENT(OUT)   :: HCHO_2      ! mixing ratio [v/v]
       REAL(fp),       INTENT(OUT)   :: LH1S        ! mixing ratio [v/v]
-      REAL(fp),       INTENT(OUT)   :: LH2S        ! mixing ratio [v/v]
-      REAL(fp),       INTENT(OUT)   :: LH3S        ! mixing ratio [v/v]
+      REAL(fp),       INTENT(OUT)   :: H2O2_2      ! mixing ratio [v/v]
 !
 !EOP
 !------------------------------------------------------------------------------
@@ -2722,47 +2760,57 @@
 !
 ! !LOCAL VARIABLES:
 !
+      REAL(fp),  PARAMETER  :: MINDAT = 1.e-20_fp
+!
       ! Scalars
-      REAL(fp)              :: CRITRH,      XGAMMA
-      REAL(fp)              :: DTCHEM,      XX,          MW_SO2
-      REAL(fp)              :: XMMS_HCHO,   DFKG_HCHO,   MW_HCHO
-      REAL(fp)              :: XMMS,        DFKG,        DFKA
-      REAL(fp)              :: alphaHCHO,   q,           qq
-      REAL(fp)              :: WTAREA,      KLH1
-      REAL(fp)              :: KchemHCHO,   KhetHCHO,    KhetdHMSA
-      REAL(fp)              :: KhetfHMSA,   K1HCHO
+      REAL(fp)              :: CRITRH, XGAMMA
+      REAL(fp)              :: XX, XY, I2, TS2, DT2
+      REAL(fp)              :: XMMS_HCHO, DFKG_HCHO, XMMS_H2O2
+      REAL(fp)              :: XMMS_SO2, DFKG_SO2, DFKG_H2O2
+      REAL(fp)              :: ALPHA_SO2, ALPHA_H2O2, ALPHA_HCHO, q, qq
+      REAL(fp)              :: RADI, WTAREA, WTAREA2, KLH1, TK1
+      REAL(fp)              :: KhetHCHO, KhetdHMSA
+      REAL(fp)              :: KhetH2O2, Qcst2
+      REAL(fp)              :: HMSA_2, LH1, LH2, LH3, LH4, LHT
 
       !=================================================================
       ! hetchem_so2 begins here!
       !=================================================================
 
-      ! Initialize for safety's sake 
-      KLH1   = 0.0_fp
+      ! Time step [s]
+      DT2 = 60.e+0_fp
+      TS2 = INT( GET_TS_CHEM() / DT2 )
+      I2  = 0
+
+      ! Initialize
+      H2O2_2 = H2O2
+      HCHO_2 = HCHO
+      SO2_2  = SO2
+      HMSA_2 = HMSA
       LH1S   = 0.0_fp
-      LH2S   = 0.0_fp
-      LH3S   = 0.0_fp
+      LH1    = 0.0_fp
+      LH2    = 0.0_fp
+      LH3    = 0.0_fp
+      LH4    = 0.0_fp
+      LHT    = 0.0_fp
       XX     = 0.0_fp
+      XY     = 0.0_fp
       XGAMMA = 0.0_fp
-      KchemHCHO = 0.0_fp
+      Qcst2  = 0.0_fp
+      KLH1      = 0.0_fp
       KhetHCHO  = 0.0_fp
-      K1HCHO    = 0.0_fp
+      KhetH2O2  = 0.0_fp
       KhetdHMSA = 0.0_fp
-      KhetfHMSA = 0.0_fp
 
       ! [%], critical RH
       CRITRH = 50.0e+0_fp
 
       ! State_Chm%WetAeroRadi = Wet Aerosol Radius [cm]
       ! WTAREA = [cm^2 wet aerosol sfc area cm^-3 air]
+      RADI = State_Chm%WetAeroRadi(I,J,L,8) / 1.e+2_fp !m
       WTAREA = 3.e+0_fp * ALWC / AWVF / 
      &         State_Chm%WetAeroRadi(I,J,L,8)
-
-      ! [g/mole], Set molecular weights locally
-      MW_SO2 = State_Chm%SpcData(id_SO2)%Info%emMW_g
-      MW_HCHO = State_Chm%SpcData(id_HCHO)%Info%emMW_g
-
-      ! DTCHEM is the chemistry timestep in seconds
-      DTCHEM = GET_TS_CHEM()
+      WTAREA2 = WTAREA * 1.e+2_fp !m2 / m3 air
 
       ! XGAMMA = Uptake coefficient
       ! Follow Cheng et al. 2016 SciAdv
@@ -2773,60 +2821,56 @@
       ENDIF
 
       ! XMMS = Mean molecular speed [cm/s]
-      XMMS = SQRT( 2.117e+8_fp * T / MW_SO2 )
-      XMMS_HCHO = SQRT( 2.117e+8_fp * T / MW_HCHO )
+      XMMS_SO2  = SQRT( 2.117e+8_fp * T / 64e+0_fp )
+      XMMS_HCHO = SQRT( 2.117e+8_fp * T / 30e+0_fp )
+      XMMS_H2O2 = SQRT( 2.117e+8_fp * T / 34e+0_fp )
 
       ! DFKG = Gas phase diffusion coeff [cm2/s]
       ! State_Met%AIRNUMDEN = dry air number density [molec/cm3]
-      DFKG = 9.45e+17_fp / State_Met%AIRNUMDEN(I,J,L) *
-     &       SQRT(T) * SQRT(3.472e-2_fp+(1.e+0_fp/MW_SO2))
+      DFKG_SO2  = 9.45e+17_fp / State_Met%AIRNUMDEN(I,J,L) *
+     &     SQRT(T) * SQRT(3.472e-2_fp+(1.e+0_fp/64e+0_fp))
+
+      DFKG_H2O2 = 9.45e+17_fp / State_Met%AIRNUMDEN(I,J,L) *
+     &     SQRT(T) * SQRT(3.472e-2_fp+(1.e+0_fp/34e+0_fp))
 
       DFKG_HCHO = 9.45e+17_fp / State_Met%AIRNUMDEN(I,J,L) *
-     &            SQRT(T) * SQRT(3.472e-2_fp+(1.e+0_fp/MW_HCHO))
+     &     SQRT(T) * SQRT(3.472e-2_fp+(1.e+0_fp/30e+0_fp))
 
-      ! DFKA = Aqueous phase diffusion coeff [cm2/s] Song et al. 2019 ACP
-      DFKA = 1.e-5_fp
-
-      ! Mass accommodation coefficient of HCHO
-      alphaHCHO = 2.e-2_fp
+      ! Mass accommodation coefficient [unitless]
+      ALPHA_SO2 = 1.e+0_fp /
+     &     ( 1.e+0_fp + exp(14.7e+0_fp-3.825e+3_fp/T) )
+      ALPHA_H2O2 = 2.3e-1_fp
+      ALPHA_HCHO = 4.e-2_fp !Davidovits 2006
 
       !=================================================================
       ! Apparent heterogeneous chemistry
 
-      ! First order rate constant (s-1)
+      ! First order rate constant with respect to SO2 (s-1)
       ! State_Chm%WetAeroRadi = Wet Aerosol Radius [cm]
       ! WTAREA = [cm^2 wet aerosol sfc area cm^-3 air]
       IF ( XGAMMA > 0.e+0_fp ) THEN
-          KLH1 = WTAREA / ( State_Chm%WetAeroRadi(I,J,L,8)/DFKG + 
-     &           4.e+0_fp/(XGAMMA*XMMS) )
+          KLH1 = WTAREA / ( State_Chm%WetAeroRadi(I,J,L,8)/DFKG_SO2 +
+     &           4.e+0_fp/(XGAMMA*XMMS_SO2) )
       ELSE
           KLH1 = 0.e+0_fp
       ENDIF
 
-      ! SO2 loss rate by hetchem [v/v/timestep]
-      XX = -1.e+0_fp * KLH1 * DTCHEM ! Argument of the exponential
-      IF ( IS_SAFE_EXP( XX ) ) THEN
-          LH1S = SO2 * (1.e+0_fp - EXP( XX ))
-      ELSE
-          LH1S = SO2
-      ENDIF
       !=================================================================
 
       !=================================================================
-      ! HMSA heterogeneous chemistry
+      ! Detailed heterogeneous chemistry
 
       ! Compute het rxn rates
-      CALL HETCHEM_RATE( ALWC,      T,         P,
-     &                   AHPLUS,    SO2,       KchemHCHO,
-     &                   KhetHCHO,  KhetdHMSA )
+      CALL HETCHEM_RATE( ALWC,   T,        P,
+     &                   AHPLUS, AIonStr,
+     &                   Qcst2,  KhetHCHO, KhetdHMSA, KhetH2O2 )
 
-      ! First order rate constant (s-1)
-      ! Gas phase and interfacial transport limitation
-      K1HCHO = WTAREA / ( State_Chm%WetAeroRadi(I,J,L,8)/DFKG_HCHO +
-     &         4.e+0_fp/(alphaHCHO*XMMS_HCHO) )
-
+      ! TK == first-order rate with SO2 [s-1]
       ! Estimate aqueous-phase transport limitation
-      q = State_Chm%WetAeroRadi(I,J,L,8)*SQRT(KchemHCHO)/SQRT(DFKA)
+      TK1 = H2O2*KhetH2O2 + HCHO*KhetHCHO
+
+      q = 3.16e+2_fp * State_Chm%WetAeroRadi(I,J,L,8) *
+     &    SQRT( SAFE_DIV( TK1, Qcst2, 0e+0_fp ) )
       IF ( q >= 0.e+0_fp .AND. q <= 0.5e+0_fp ) THEN
          qq = 1.e+0_fp
       ELSEIF ( q > 0.5e+0_fp .AND. q <= 4.e+0_fp ) THEN
@@ -2839,33 +2883,131 @@
          CALL ERROR_STOP('error in qq', 'sulfate_mod.f')
       ENDIF
 
-      ! Overall rate of HMSA formation [1/s]
-      KhetfHMSA = 1.e+0_fp / ( (1.e+0_fp/K1HCHO) +
-     &            (1.e+0_fp/qq/KhetHCHO) )
+      ! Adjust aqueous-phase transport limitation
+      KhetH2O2 = KhetH2O2 * qq
+      KhetHCHO = KhetHCHO * qq
 
-      !-----------------------------------------------------
-      ! Compute decomposition of HMSA (HMSA => SO2 + HCHO)
-      XX = -1.e+0_fp * KhetdHMSA * DTCHEM
-      IF ( IS_SAFE_EXP( XX ) ) THEN
-          LH2S = HMSA * (1.e+0_fp - EXP( XX ))
+      ! gaseous and interfacial limitation
+      IF ( KhetH2O2*H2O2 > MINDAT ) THEN
+         XX=1.e+0_fp/(1.e+0_fp/KhetH2O2+
+     &    RADI*H2O2/WTAREA2/(DFKG_SO2/1.e+4_fp)+
+     &    4.e+0_fp*H2O2/WTAREA2/(XMMS_SO2/1.e+2_fp)/ALPHA_SO2)
+         XY=1.e+0_fp/(1.e+0_fp/KhetH2O2+
+     &    RADI*SO2/WTAREA2/(DFKG_H2O2/1.e+4_fp)+
+     &    4.e+0_fp*SO2/WTAREA2/(XMMS_H2O2/1.e+2_fp)/ALPHA_H2O2)
+         KhetH2O2 = MIN( KhetH2O2, XX, XY )
+         KhetH2O2 = MAX( 0.e+0_fp, KhetH2O2 )
       ELSE
-          LH2S = HMSA
+         KhetH2O2 = 0.e+0_fp
+      ENDIF
+
+      IF ( KhetHCHO*HCHO > MINDAT ) THEN
+         XX=1.e+0_fp/(1.e+0_fp/KhetHCHO+
+     &    RADI*HCHO/WTAREA2/(DFKG_SO2/1.e+4_fp)+
+     &    4.e+0_fp*HCHO/WTAREA2/(XMMS_SO2/1.e+2_fp)/ALPHA_SO2)
+         XY=1.e+0_fp/(1.e+0_fp/KhetHCHO+
+     &    RADI*SO2/WTAREA2/(DFKG_HCHO/1.e+4_fp)+
+     &    4.e+0_fp*SO2/WTAREA2/(XMMS_HCHO/1.e+2_fp)/ALPHA_HCHO)
+         KhetHCHO = MIN( KhetHCHO, XX, XY )
+         KhetHCHO = MAX( 0.e+0_fp, KhetHCHO )
+      ELSE
+         KhetHCHO = 0.e+0_fp
+      ENDIF
+
+      !=================================================================
+
+      ! SJS-OPTION
+      IF ( 1 > 0 ) THEN
+         KLH1      = 0.e+0_fp
+         KhetHCHO  = 0.e+0_fp
+         KhetdHMSA = 0.e+0_fp
+!         KhetH2O2  = 0.e+0_fp
+      ENDIF
+
+      DO WHILE ( (I2 < TS2) .AND. (SO2_2 > MINDAT*1.1e+0_fp) )
+
+      !--------------------------------------------------------
+      ! Compute apparent reactive uptake of SO2
+      !--------------------------------------------------------
+
+      XX = -1.e+0_fp * KLH1 * DT2
+      IF ( IS_SAFE_EXP( XX ) ) THEN
+         LH1 = SO2_2 * ( 1.e+0_fp - EXP(XX) )
+      ELSE
+         LH1 = SO2_2
       ENDIF
 
       !-----------------------------------------------------
       ! Compute formation of HMSA (SO2 + HCHO => HMSA)
-      XX = -1.e+0_fp * KhetfHMSA * DTCHEM
-      IF ( IS_SAFE_EXP( XX ) ) THEN
-         LH3S = HCHO * (1.e+0_fp - EXP( XX ))
-      ELSE
-         LH3S = HCHO
-      ENDIF
-      !=================================================================
+      !-----------------------------------------------------
 
-      LH1S = MIN( LH1S, SO2 )
-      LH2S = MIN( LH2S, HMSA )
-      LH3S = MIN( LH3S, SO2 )
-      LH3S = MIN( LH3S, HCHO )
+      XX = ( SO2_2 - HCHO_2 ) * KhetHCHO * DT2
+      IF ( IS_SAFE_EXP( XX ) .and. ABS( XX ) > 0e+0_fp ) THEN
+         LH2 = SO2_2 * HCHO_2 * ( EXP(XX) - 1.e+0_fp ) /
+     &         ( (SO2_2 * EXP(XX)) - HCHO_2 )
+      ELSE
+         IF ( XX > 0.e+0_fp ) THEN
+            LH2 = HCHO_2
+         ELSE IF ( XX < 0.e+0_fp) THEN
+            LH2 = SO2_2
+         ELSE
+            LH2 = SO2_2 - 1/(KhetHCHO*DT2+1/SO2_2)
+         ENDIF
+      ENDIF
+
+      !-----------------------------------------------------
+      ! Compute decomposition of HMSA (HMSA => SO2 + HCHO)
+      !-----------------------------------------------------
+
+      XX = -1.e+0_fp * KhetdHMSA * DT2
+      IF ( IS_SAFE_EXP( XX ) ) THEN
+          LH3 = HMSA_2 * (1.e+0_fp - EXP( XX ))
+      ELSE
+          LH3 = HMSA_2
+      ENDIF
+
+      !----------------------------------------------------------
+      ! Compute loss by H2O2
+      !----------------------------------------------------------
+
+      XX = ( SO2_2 - H2O2_2 ) * KhetH2O2 * DT2
+      IF ( IS_SAFE_EXP( XX ) .and. ABS( XX ) > 0e+0_fp ) THEN
+         LH4 = SO2_2 * H2O2_2 * ( EXP(XX) - 1.e+0_fp ) /
+     &         ( (SO2_2 * EXP(XX)) - H2O2_2 )
+      ELSE
+         IF ( XX > 0.e+0_fp ) THEN
+            LH4 = H2O2_2
+         ELSE IF ( XX < 0.e+0_fp) THEN
+            LH4 = SO2_2
+         ELSE
+            LH4 = SO2_2 - 1/(KhetH2O2*DT2+1/SO2_2)
+         ENDIF
+      ENDIF
+
+      ! If the total loss is larger than the available SO2
+      LHT = LH1 + LH2 + LH4
+      IF ( LHT > SO2_2 ) THEN
+         LH1 = SO2_2 * LH1 / LHT
+         LH2 = SO2_2 * LH2 / LHT
+         LH4 = SO2_2 * LH4 / LHT
+      ELSE
+         LH1 = LH1
+         LH2 = LH2
+         LH4 = LH4
+      ENDIF
+
+      !----------------------------------------------------------
+      ! Update box-average concentrations [v/v]
+      !----------------------------------------------------------
+
+      SO2_2   = MAX( SO2_2  + LH3 - LHT, MINDAT )
+      H2O2_2  = MAX( H2O2_2 - LH4, MINDAT )
+      HCHO_2  = MAX( HCHO_2 + LH3 - LH2, MINDAT )
+      HMSA_2  = MAX( HMSA_2 - LH3 + LH2, MINDAT )
+      LH1S    = MAX( LH1S   + LH1, MINDAT )
+      I2      = I2 + 1
+
+      ENDDO ! finish when TS2=DTCHEM/DT2
 
       END SUBROUTINE HETCHEM_SO2
 !EOC
@@ -3060,7 +3202,7 @@
       REAL(fp)              :: Kt1,    Kt2
       REAL(fp)              :: PSO4E,  PSO4F,   Kt1N,    Kt2N
       REAL(fp)              :: XX, XY, IonStr, TNVC, TNA, TCL, THMSA ! SJS
-      REAL(fp)              :: TFAA, TAAA, TMSA, LH1S, LH2S, LH3S ! SJS
+      REAL(fp)              :: TFAA, TAAA, TMSA, LH1S ! SJS
       REAL(fp)              :: ATSO4, ATCA, ATK, ATMG, ATCL, ATNA ! SJS
       REAL(fp)              :: ATNH3, ATNO3, XRH, TNO2, TSO2      ! SJS
       REAL(fp)              :: ALWC, AHPLUS, AIonStr, AWVF        ! SJS
@@ -3091,6 +3233,7 @@
       REAL(fp)              :: L7S0, L8S0, L9S0 ! SJS 20200208
       REAL(fp)              :: O3_2, H2O2_2, NO2_2, HONO_2 ! SJS
       REAL(fp)              :: HOBr_2, HCHO_2, SO2_2, HMSA_2 ! SJS
+      REAL(fp)              :: H2O2_3, HCHO_3, SO2_3 ! SJS
 
       REAL(fp)              :: KaqO2, L4, L4S, MnII, FeIII
       REAL(fp)              :: DUST,  Mn_ant,  Mn_nat
@@ -3213,7 +3356,7 @@
 !$OMP+PRIVATE( KdHMSA, L6, L6S, HCHO0, HMSA0, HMSC0, HMSP0             ) !SJS
 !$OMP+PRIVATE( Kt1, Kt2, SO2_ss, Kt1N, Kt2N                            )
 !$OMP+PRIVATE( PSO4E, PSO4F, XX, XY, IonStr, TNVC, TNA, TCL, THMSA     ) !SJS
-!$OMP+PRIVATE( TFAA, TAAA, TMSA, TSO2, TNO2, LH1S, LH2S, LH3S          ) !SJS
+!$OMP+PRIVATE( TFAA, TAAA, TMSA, TSO2, TNO2, LH1S                      ) !SJS
 !$OMP+PRIVATE( ATSO4, ATCA, ATK, ATMG, ATCL, ATNA                      ) !SJS
 !$OMP+PRIVATE( ATNH3, ATNO3, ALWC, AHPLUS, AIonStr, AWVF, XRH          ) !SJS
 !$OMP+PRIVATE( HPLUS, SO4nss, TNH3, TNO3,  GNO3, ANIT                  )
@@ -3232,6 +3375,7 @@
 !$OMP+PRIVATE( TK1_2, TLS, DT2, TS2, I2, HMSA_2, dK0                   ) !SJS
 !$OMP+PRIVATE( TLS0, L2S0, L3S0, L4S0, L5S0, L6S0, L7S0, L8S0, L9S0    ) !SJS
 !$OMP+PRIVATE( O3_2, H2O2_2, NO2_2, HONO_2, HOBr_2, HCHO_2, SO2_2      ) !SJS
+!$OMP+PRIVATE( H2O2_3, HCHO_3, SO2_3                                   ) !SJS
 !$OMP+SCHEDULE( DYNAMIC )
       DO L = 1, LLPAR 
       DO J = 1, JJPAR
@@ -3538,6 +3682,10 @@
          HOBr_2  = 0.e+0_fp
          HCHO_2  = 0.e+0_fp
          HMSA_2  = 0.e+0_fp
+         SO2_3   = 0.e+0_fp
+         H2O2_3   = 0.e+0_fp
+         HCHO_3   = 0.e+0_fp
+         LH1S     = 0.e+0_fp
  
          ! Time step [s]
          DT2 = 60.e+0_fp
@@ -4650,17 +4798,14 @@
          ! SJS 20191104
          !==============================================================
 
-         ! Zero variables
-         LH1S    = 0.e+0_fp
-         LH2S    = 0.e+0_fp
-         LH3S    = 0.e+0_fp
-
          ! [%], get RH from met fields
          XRH = State_Met%RH(I,J,L)
 
          ! Get concentrations for aerosol pH calculation
 
          ! Total SO4 convert from [v/v] to [moles/m3]
+         ! AIRMW == Molecular weight of air (g/mol)
+         ! AIRDEN == Dry air density [kg/m3]
          ATSO4 = Spc(I,J,L,id_SO4) * State_Met%AIRDEN(I,J,L) *
      &           1.e+3_fp / AIRMW
      &           + Spc(I,J,L,id_HMSA) * State_Met%AIRDEN(I,J,L) *
@@ -4706,36 +4851,21 @@
          CALL GET_AHPLUS( TK, XRH, ATNA, ATSO4, ATNH3, ATNO3, ATCL,
      &           ATCA, ATK, ATMG, ALWC, AHPLUS, AIonStr, AWVF )
 
-         IF ( ( ALWC   > 0.e+0_fp ) .AND.
-     &        ( SO2_ss > MINDAT )   .AND.
-     &        ( AWVF   > 0.25e+0_fp ) ) THEN
+         IF ( ( ALWC  > 0.e+0_fp ) .AND.
+     &        ( SO2_2 > MINDAT )   .AND.
+     &        ( AWVF  > 0.25e+0_fp ) ) THEN
             CALL HETCHEM_SO2( I,         J,          L,
      &                        TK,        PATM,       XRH,
-     &                        SO2_ss,    HCHO0,      HMSA0,
-     &                        LH1S,      LH2S,       LH3S,
-     &                        State_Met, State_Chm,
-     &                        ALWC,      AHPLUS,     AIonStr,   AWVF )
+     &                        SO2_2,     HCHO_2,     HMSA_2,   H2O2_2,
+     &                        SO2_3,     HCHO_3,     LH1S,     H2O2_3,
+     &                        ALWC,      AHPLUS,     AIonStr,  AWVF,
+     &                        State_Met, State_Chm )
          ELSE
-            ! Otherwise set equal to zero
-            LH1S = 0.e+0_fp
-            LH2S = 0.e+0_fp
-            LH3S = 0.e+0_fp
-         ENDIF
-
-         ! SJS-OPTION
-         ! Default option to limit aerosol reaction to non FC, SJS 20191124
-         IF ( 1 > 0 ) THEN
-            LH1S = LH1S * ( 1.e+0_fp - FC )
-            LH2S = LH2S * ( 1.e+0_fp - FC )
-            LH3S = LH3S * ( 1.e+0_fp - FC )
-         ENDIF
-
-         ! SJS-OPTION
-         ! Option to turn off hetchem, SJS 20190809
-         IF ( 1 > 0 ) THEN
-            LH1S = 0.e+0_fp
-            LH2S = 0.e+0_fp
-            LH3S = 0.e+0_fp
+            ! Otherwise set these traces do not change
+            SO2_3  = SO2_2
+            HCHO_3 = HCHO_2
+            LH1S   = 0.e+0_fp
+            H2O2_3 = H2O2_2
          ENDIF
 
          !==============================================================
@@ -4748,11 +4878,11 @@
          PSO4P3_SO2(I,J,L) = O30-O3_2
          PSO4P4_SO2(I,J,L) = L4
          PSO4P5_SO2(I,J,L) = PSO4E + HOBr0-HOBr_2
-         PSO4P6_SO2(I,J,L) = 0.e+0_fp
-         PSO4P7_SO2(I,J,L) = 0.e+0_fp
-         PHMSA_SO2(I,J,L)  = HCHO0-HCHO_2
-         PHMSC_SO2(I,J,L)  = 0.e+0_fp
-         PHMSP_SO2(I,J,L)  = 0.e+0_fp
+         PSO4P6_SO2(I,J,L) = H2O2_2-H2O2_3
+         PSO4P7_SO2(I,J,L) = LH1S
+         PHMSA_SO2(I,J,L)  = HCHO0-HCHO_3
+         PHMSC_SO2(I,J,L)  = HCHO0-HCHO_2
+         PHMSP_SO2(I,J,L)  = HCHO_2-HCHO_3
 
          PSO4_SO2(I,J,L)   = L1 +
      &                       PSO4P1_SO2(I,J,L) +
@@ -4767,12 +4897,12 @@
          PSO4_ss(I,J,L) = PSO4F
 
          ! Box-average concentration [v/v]
-         SO20   = MAX( SO2_2, MINDAT )
+         SO20   = MAX( SO2_3, MINDAT )
          O30    = MAX( O3_2, MINDAT )
-         H2O20  = MAX( H2O2_2, MINDAT )
+         H2O20  = MAX( H2O2_3, MINDAT )
          HONO0  = MAX( HONO_2, MINDAT )
          NO20   = MAX( NO2_2, MINDAT )
-         HCHO0  = MAX( HCHO_2, MINDAT )
+         HCHO0  = MAX( HCHO_3, MINDAT )
          HOBr0  = MAX( HOBr_2, MINDAT )
 
          ! Update SO2 level, save SO2[ppv], H2O2[ppv] for WETDEP, SJS 20190801
