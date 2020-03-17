@@ -134,6 +134,7 @@ MODULE State_Chm_Mod
      REAL(fp),          POINTER :: ISCloud    (:,:,:  ) ! Cloud IS [M] SJS
      REAL(fp),          POINTER :: HSCloud    (:,:,:  ) ! Cloud presence [-] SJS
      REAL(fp),          POINTER :: WCCloud    (:,:,:  ) ! Cloud LWC [m3/m3] SJS
+     REAL(fp),          POINTER :: CSsav      (:,:,:,:) ! Save ChmState [unknown] SJS
 
      !----------------------------------------------------------------------
      ! Fields for KPP solver
@@ -445,6 +446,7 @@ CONTAINS
     State_Chm%ISCloud       => NULL() !SJS
     State_Chm%HSCloud       => NULL() !SJS
     State_Chm%WCCloud       => NULL() !SJS
+    State_Chm%CSsav         => NULL() !SJS
     State_Chm%SSAlk         => NULL()
 
     ! Fields for sulfate chemistry
@@ -1257,6 +1259,47 @@ CONTAINS
        IF ( RC /= GC_SUCCESS ) RETURN
 
        !--------------------------------------------------------------------
+       ! CSsav SJS 20200316
+       !--------------------------------------------------------------------
+       ALLOCATE( State_Chm%CSsav( IM, JM, LM, 8 ), STAT=RC )
+       CALL GC_CheckVar( 'State_Chm%CSsav', 0, RC )
+       IF ( RC /= GC_SUCCESS ) RETURN
+       State_Chm%CSsav = 0.0_fp
+
+       ! Loop over all entries to register each category individually
+       DO N = 1, 8
+
+          ! Define identifying string
+          SELECT CASE( N )
+             CASE( 1  )
+                chmID = 'CSsav1'
+             CASE( 2  )
+                chmID = 'CSsav2'
+             CASE( 3  )
+                chmID = 'CSsav3'
+             CASE( 4  )
+                chmID = 'CSsav4'
+             CASE( 5  )
+                chmID = 'CSsav5'
+             CASE( 6  )
+                chmID = 'CSsav6'
+             CASE( 7  )
+                chmID = 'CSsav7'
+             CASE( 8  )
+                chmID = 'CSsav8'
+             CASE DEFAULT
+                ErrMsg ='CSsav undefined'
+                CALL GC_Error( ErrMsg, RC, ThisLoc )
+                RETURN
+          END SELECT
+
+          CALL Register_ChmField( am_I_Root, chmID, State_Chm%CSsav,   &
+                                  State_Chm, RC,    Ncat=N )
+          CALL GC_CheckVar( 'State_Chm%CSsav', 1, RC )
+          IF ( RC /= GC_SUCCESS ) RETURN
+       ENDDO
+
+       !--------------------------------------------------------------------
        ! SSAlk
        !--------------------------------------------------------------------
        ALLOCATE( State_Chm%SSAlk( IM, JM, LM, 2 ), STAT=RC )
@@ -1991,6 +2034,14 @@ CONTAINS
        CALL GC_CheckVar( 'State_Chm%HSCloud', 2, RC )
        IF ( RC /= GC_SUCCESS ) RETURN
        State_Chm%HSCloud => NULL()
+    ENDIF
+
+    ! SJS 20200316
+    IF ( ASSOCIATED( State_Chm%CSsav ) ) THEN
+       DEALLOCATE( State_Chm%CSsav, STAT=RC )
+       CALL GC_CheckVar( 'State_Chm%CSsav', 2, RC )
+       IF ( RC /= GC_SUCCESS ) RETURN
+       State_Chm%CSsav => NULL()
     ENDIF
 
     IF ( ASSOCIATED( State_Chm%SSAlk ) ) THEN
@@ -2758,6 +2809,47 @@ CONTAINS
 
        CASE( 'HSCLOUD' ) ! SJS 20190701
           IF ( isDesc  ) Desc  = 'Cloud presence'
+          IF ( isUnits ) Units = '1'
+          IF ( isRank  ) Rank  =  3
+
+       ! SJS 20200316
+       CASE( 'CSSAV1' )
+          IF ( isDesc  ) Desc  = 'CSsav1'
+          IF ( isUnits ) Units = '1'
+          IF ( isRank  ) Rank  =  3
+
+       CASE( 'CSSAV2' )
+          IF ( isDesc  ) Desc  = 'CSsav2'
+          IF ( isUnits ) Units = '1'
+          IF ( isRank  ) Rank  =  3
+
+       CASE( 'CSSAV3' )
+          IF ( isDesc  ) Desc  = 'CSsav3'
+          IF ( isUnits ) Units = '1'
+          IF ( isRank  ) Rank  =  3
+
+       CASE( 'CSSAV4' )
+          IF ( isDesc  ) Desc  = 'CSsav4'
+          IF ( isUnits ) Units = '1'
+          IF ( isRank  ) Rank  =  3
+
+       CASE( 'CSSAV5' )
+          IF ( isDesc  ) Desc  = 'CSsav5'
+          IF ( isUnits ) Units = '1'
+          IF ( isRank  ) Rank  =  3
+
+       CASE( 'CSSAV6' )
+          IF ( isDesc  ) Desc  = 'CSsav6'
+          IF ( isUnits ) Units = '1'
+          IF ( isRank  ) Rank  =  3
+
+       CASE( 'CSSAV7' )
+          IF ( isDesc  ) Desc  = 'CSsav7'
+          IF ( isUnits ) Units = '1'
+          IF ( isRank  ) Rank  =  3
+
+       CASE( 'CSSAV8' )
+          IF ( isDesc  ) Desc  = 'CSsav8'
           IF ( isUnits ) Units = '1'
           IF ( isRank  ) Rank  =  3
 
