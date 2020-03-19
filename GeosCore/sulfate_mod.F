@@ -2540,7 +2540,7 @@
 ! !INTERFACE:
 !
       SUBROUTINE HETCHEM_RATE( ALWC,   T,        P,
-     &                         AHPLUS, AIonStr,
+     &                         AHPLUS, AIonStr,  EF,
      &                         Qcst2,  KhetHCHO, KhetdHMSA, KhetH2O2 )
 !
       USE ERROR_MOD,    ONLY : ERROR_STOP
@@ -2559,6 +2559,7 @@
       REAL(fp), INTENT(OUT) :: KhetdHMSA ! Decomposition [1/s]
       REAL(fp), INTENT(OUT) :: KhetH2O2  ! Reaction rate for H2O2 [v/v/s]
       REAL(fp), INTENT(OUT) :: Qcst2     ! Parameter for calculating Q
+      REAL(fp), INTENT(OUT) :: EF        ! Enhancement Factor [1]
 !
 !EOP
 !------------------------------------------------------------------------------
@@ -2574,7 +2575,7 @@
 !
       REAL(fp)              :: KS1, KS2, HCSO2, FHCSO2
       REAL(fp)              :: XSO2G, XHSO3, XSO3
-      REAL(fp)              :: KH2O2, KH1, HCH2O2, FHCH2O2, XH2O2G, EF
+      REAL(fp)              :: KH2O2, KH1, HCH2O2, FHCH2O2, XH2O2G
       REAL(fp)              :: KHCHO1, KHCHO2, HCHCHO, FHCHCHO
       REAL(fp)              :: XHCHOg, Kw_T
 
@@ -2770,7 +2771,7 @@
       REAL(fp)              :: ALPHA_SO2, ALPHA_H2O2, ALPHA_HCHO, q, qq
       REAL(fp)              :: RADI, WTAREA, WTAREA2, KLH1, TK1
       REAL(fp)              :: KhetHCHO, KhetdHMSA
-      REAL(fp)              :: KhetH2O2, Qcst2
+      REAL(fp)              :: KhetH2O2, Qcst2, KEF
       REAL(fp)              :: HMSA_2, LH1, LH2, LH3, LH4, LHT
 
       !=================================================================
@@ -2797,6 +2798,7 @@
       XY     = 0.0_fp
       XGAMMA = 0.0_fp
       Qcst2  = 0.0_fp
+      KEF    = 0.0_fp
       KLH1      = 0.0_fp
       KhetHCHO  = 0.0_fp
       KhetH2O2  = 0.0_fp
@@ -2862,7 +2864,7 @@
 
       ! Compute het rxn rates
       CALL HETCHEM_RATE( ALWC,   T,        P,
-     &                   AHPLUS, AIonStr,
+     &                   AHPLUS, AIonStr,  KEF,
      &                   Qcst2,  KhetHCHO, KhetdHMSA, KhetH2O2 )
 
       ! TK == first-order rate with SO2 [s-1]
@@ -2916,9 +2918,16 @@
 
       !=================================================================
 
+      ! Save ChmState variables SJS 20200317
+      State_Chm%CSsav(I,J,L,5) = KEF
+      State_Chm%CSsav(I,J,L,6) = H2O2*KhetH2O2
+      State_Chm%CSsav(I,J,L,7) = HCHO*KhetHCHO
+      State_Chm%CSsav(I,J,L,8) = KLH1
+      State_Chm%CSsav(I,J,L,9) = KhetdHMSA
+
       ! SJS-OPTION
       IF ( 1 > 0 ) THEN
-         KLH1      = 0.e+0_fp
+!         KLH1      = 0.e+0_fp
          KhetHCHO  = 0.e+0_fp
          KhetdHMSA = 0.e+0_fp
 !         KhetH2O2  = 0.e+0_fp
@@ -3261,6 +3270,7 @@
       REAL(fp), POINTER     :: ISCloud(:,:,:) ! SJS
       REAL(fp), POINTER     :: HSCloud(:,:,:) ! SJS 20190701
       REAL(fp), POINTER     :: WCCloud(:,:,:) ! SJS 20191128
+      REAL(fp), POINTER     :: CSsav(:,:,:,:) ! SJS 20200316
       REAL(fp), POINTER     :: SSAlk(:,:,:,:)
       REAL(fp), POINTER     :: H2O2s(:,:,:)
       REAL(fp), POINTER     :: SO2s(:,:,:)
@@ -3293,6 +3303,7 @@
       WCCloud     => State_Chm%WCCloud ! SJS 20191128
       ISCloud     => State_Chm%ISCloud ! SJS
       HSCloud     => State_Chm%HSCloud ! SJS 20190701
+      CSsav       => State_Chm%CSsav   ! SJS 20200316
       SSAlk       => State_Chm%SSAlk
       H2O2s       => State_Chm%H2O2AfterChem
       SO2s        => State_Chm%SO2AfterChem
@@ -3302,6 +3313,7 @@
       ISCloud(:,:,:) = 0.0e+0_fp ! SJS
       HSCloud(:,:,:) = 0.0e+0_fp ! SJS 20190701
       WCCloud(:,:,:) = 0.0e+0_fp ! SJS 20191128
+      CSsav(:,:,:,:) = 0.0e+0_fp ! SJS 20200317
 
       ! DTCHEM is the chemistry timestep in seconds
       DTCHEM   = GET_TS_CHEM()
@@ -4851,21 +4863,40 @@
          CALL GET_AHPLUS( TK, XRH, ATNA, ATSO4, ATNH3, ATNO3, ATCL,
      &           ATCA, ATK, ATMG, ALWC, AHPLUS, AIonStr, AWVF )
 
-         IF ( ( ALWC  > 0.e+0_fp ) .AND.
+         ! ALWC>1e-15 [m3 H2O m-3 air] == 10^-3 [ug H2O/m3 air], SJS 20200316
+         ! There a few cases obtaining AHPLUS < 0, SJS 20200318
+         IF ( ( ALWC  > 1.e-15_fp ) .AND.
+     &        ( AHPLUS> 0.e+0_fp )  .AND.
      &        ( SO2_2 > MINDAT )   .AND.
      &        ( AWVF  > 0.25e+0_fp ) ) THEN
+
             CALL HETCHEM_SO2( I,         J,          L,
      &                        TK,        PATM,       XRH,
      &                        SO2_2,     HCHO_2,     HMSA_2,   H2O2_2,
      &                        SO2_3,     HCHO_3,     LH1S,     H2O2_3,
      &                        ALWC,      AHPLUS,     AIonStr,  AWVF,
      &                        State_Met, State_Chm )
+
+            ! Save ChmState
+            CSsav(I,J,L,1) = 1.e+0_fp
+            CSsav(I,J,L,2) = ALWC
+            CSsav(I,J,L,3) = -1.0e+0_fp * log10(AHPLUS)
+            CSsav(I,J,L,4) = AIonStr
+
          ELSE
+
             ! Otherwise set these traces do not change
             SO2_3  = SO2_2
             HCHO_3 = HCHO_2
             LH1S   = 0.e+0_fp
             H2O2_3 = H2O2_2
+
+            ! Save ChmState
+            CSsav(I,J,L,1) = 0.e+0_fp
+            CSsav(I,J,L,2) = 0.e+0_fp
+            CSsav(I,J,L,3) = 0.e+0_fp
+            CSsav(I,J,L,4) = 0.e+0_fp
+
          ENDIF
 
          !==============================================================
@@ -5211,6 +5242,7 @@
       ISCloud => NULL() ! SJS
       HSCloud => NULL() ! SJS 20190701
       WCCloud => NULL() ! SJS 20191128
+      CSsav   => NULL() ! SJS 20200307
       SSAlk   => NULL()
       H2O2s   => NULL()
       SO2s    => NULL()

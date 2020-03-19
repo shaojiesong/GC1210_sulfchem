@@ -1261,13 +1261,13 @@ CONTAINS
        !--------------------------------------------------------------------
        ! CSsav SJS 20200316
        !--------------------------------------------------------------------
-       ALLOCATE( State_Chm%CSsav( IM, JM, LM, 8 ), STAT=RC )
+       ALLOCATE( State_Chm%CSsav( IM, JM, LM, 9 ), STAT=RC )
        CALL GC_CheckVar( 'State_Chm%CSsav', 0, RC )
        IF ( RC /= GC_SUCCESS ) RETURN
        State_Chm%CSsav = 0.0_fp
 
        ! Loop over all entries to register each category individually
-       DO N = 1, 8
+       DO N = 1, 9
 
           ! Define identifying string
           SELECT CASE( N )
@@ -1287,6 +1287,8 @@ CONTAINS
                 chmID = 'CSsav7'
              CASE( 8  )
                 chmID = 'CSsav8'
+             CASE( 9  )
+                chmID = 'CSsav9'
              CASE DEFAULT
                 ErrMsg ='CSsav undefined'
                 CALL GC_Error( ErrMsg, RC, ThisLoc )
@@ -2850,6 +2852,11 @@ CONTAINS
 
        CASE( 'CSSAV8' )
           IF ( isDesc  ) Desc  = 'CSsav8'
+          IF ( isUnits ) Units = '1'
+          IF ( isRank  ) Rank  =  3
+
+       CASE( 'CSSAV9' )
+          IF ( isDesc  ) Desc  = 'CSsav9'
           IF ( isUnits ) Units = '1'
           IF ( isRank  ) Rank  =  3
 
