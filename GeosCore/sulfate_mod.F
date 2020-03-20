@@ -2731,7 +2731,8 @@
       USE ERROR_MOD,          ONLY : IS_SAFE_EXP, ERROR_STOP, SAFE_DIV
       USE State_Chm_Mod,      ONLY : ChmState
       USE State_Met_Mod,      ONLY : MetState
-      USE TIME_MOD,           ONLY : GET_TS_CHEM
+      USE TIME_MOD,           ONLY : GET_TS_CHEM, GET_MONTH
+      USE GC_GRID_MOD,        ONLY : GET_XMID, GET_YMID
 !
 ! !INPUT PARAMETERS:
 !
@@ -2765,7 +2766,7 @@
 !
       ! Scalars
       REAL(fp)              :: CRITRH, XGAMMA
-      REAL(fp)              :: XX, XY, I2, TS2, DT2
+      REAL(fp)              :: XX, XY, I2, TS2, DT2, X, Y
       REAL(fp)              :: XMMS_HCHO, DFKG_HCHO, XMMS_H2O2
       REAL(fp)              :: XMMS_SO2, DFKG_SO2, DFKG_H2O2
       REAL(fp)              :: ALPHA_SO2, ALPHA_H2O2, ALPHA_HCHO, q, qq
@@ -2817,7 +2818,7 @@
       ! XGAMMA = Uptake coefficient
       ! Follow Cheng et al. 2016 SciAdv
       IF ( XRH > CRITRH ) THEN
-          XGAMMA = 6.e-7_fp * (XRH - CRITRH) + 2.e-5_fp
+          XGAMMA = 4.e-7_fp * (XRH - CRITRH) + 2.e-5_fp
       ELSE
           XGAMMA = 0.e+0_fp
       ENDIF
@@ -2855,6 +2856,25 @@
      &           4.e+0_fp/(XGAMMA*XMMS_SO2) )
       ELSE
           KLH1 = 0.e+0_fp
+      ENDIF
+
+      ! SJS-OPTION
+      ! Only apply this mechanism over China winter
+      IF ( 1 > 0 ) THEN
+
+         ! Grid box longitude and latitude [degrees]
+         X = GET_XMID( I, J, 1 )
+         Y = GET_YMID( I, J, 1 )
+
+         IF ( GET_MONTH()>=3 .AND. GET_MONTH()<=11 ) THEN
+            KLH1 = 0.e+0_fp
+         ELSE
+            IF ( X < 100.0 .OR. X > 135.0 .OR.
+     &           Y <  22.0 .OR. Y >  50.0 ) THEN
+               KLH1 = 0.e+0_fp
+            ENDIF
+         ENDIF
+
       ENDIF
 
       !=================================================================
@@ -2927,7 +2947,7 @@
 
       ! SJS-OPTION
       IF ( 1 > 0 ) THEN
-!         KLH1      = 0.e+0_fp
+         KLH1      = 0.e+0_fp
          KhetHCHO  = 0.e+0_fp
          KhetdHMSA = 0.e+0_fp
 !         KhetH2O2  = 0.e+0_fp
