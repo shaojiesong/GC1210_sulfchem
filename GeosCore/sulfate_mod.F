@@ -2818,7 +2818,7 @@
       ! XGAMMA = Uptake coefficient
       ! Follow Cheng et al. 2016 SciAdv
       IF ( XRH > CRITRH ) THEN
-          XGAMMA = 4.e-7_fp * (XRH - CRITRH) + 2.e-5_fp
+          XGAMMA = 6.e-7_fp * (XRH - CRITRH) + 2.e-5_fp
       ELSE
           XGAMMA = 0.e+0_fp
       ENDIF
@@ -2950,7 +2950,7 @@
          KLH1      = 0.e+0_fp
          KhetHCHO  = 0.e+0_fp
          KhetdHMSA = 0.e+0_fp
-!         KhetH2O2  = 0.e+0_fp
+         KhetH2O2  = 0.e+0_fp
       ENDIF
 
       DO WHILE ( (I2 < TS2) .AND. (SO2_2 > MINDAT*1.1e+0_fp) )
