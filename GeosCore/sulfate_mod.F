@@ -3640,20 +3640,31 @@
 
          ! Get cloud fraction from met fields
          FC      = State_Met%CLDF(I,J,L)
-         FC      = MIN(1.d0, FC) !SJS 20191124, make sure 0<=FC<=1
-         FC      = MAX(0.d0, FC)
 
          ! Get liquid water content [m3 H2O/m3 air] within cloud from met flds
          ! Units: [kg H2O/kg air] * [kg air/m3 air] * [m3 H2O/1e3 kg H2O]
 !GanLuo
          IF(SIZE(QQ3D)>1)THEN
-           LWC     = State_Met%QL(I,J,L) * State_Met%AIRDEN(I,J,L) *
-     &             1e-3_fp +MAX(0.d0, QQ3D(L,I,J)*DTCHEM)
+           LWC = MAX(0.d0,State_Met%QL(I,J,L))*State_Met%AIRDEN(I,J,L)*
+     &           1e-3_fp + MAX(0.d0,QQ3D(L,I,J)*DTCHEM)
          ELSE
-           LWC     = State_Met%QL(I,J,L) * State_Met%AIRDEN(I,J,L) *
-     &             1e-3_fp
+           LWC = MAX(0.d0,State_Met%QL(I,J,L))*State_Met%AIRDEN(I,J,L)*
+     &           1e-3_fp
          ENDIF
          LWC     = MAX(0.d0, LWC)
+
+!GanLuo
+         IF( LWC > 0.d0 ) THEN
+           IF(TK<263.D0)THEN
+             FC = FC * LWC / ( LWC +
+     &            MAX(0.d0,State_Met%QI(I,J,L))*
+     &            State_Met%AIRDEN(I,J,L) * 1e-3_fp)
+           ENDIF
+         ELSE
+           LWC = 0.d0
+         ENDIF
+         FC      = MIN(1.d0, FC) !SJS 20191124, make sure 0<=FC<=1
+         FC      = MAX(0.d0, FC)
 
          ! LWC is a grid-box averaged quantity. To improve the representation 
          ! of sulfate chemistry, we divide LWC by the cloud fraction and 
@@ -3728,9 +3739,10 @@
          ! Prevent divide-by-zero if LWC=0 (mpayer, 9/6/13)
          ! Follw Chris Holmes set up for FC > 0.0001, SJS 20200120
          ! LWC>1e-12 [m3 H2O m-3 air] == 1 [ug H2O/m3 air], SJS 20200128
+         ! GanLuo from 258K to 237K
          IF ( ( FC     > 1.e-4_fp   )  .AND.
      &        ( SO2_ss > MINDAT )  .AND. 
-     &        ( TK     > 258.0  )  .AND.
+     &        ( TK     > 237.d0  )  .AND.
      &        ( LWC    > 1.e-12_fp   ) ) THEN
 
             !===========================================================
