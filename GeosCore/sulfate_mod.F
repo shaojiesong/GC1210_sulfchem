@@ -2852,8 +2852,18 @@
       ! State_Chm%WetAeroRadi = Wet Aerosol Radius [cm]
       ! WTAREA = [cm^2 wet aerosol sfc area cm^-3 air]
       IF ( XGAMMA > 0.e+0_fp ) THEN
-          KLH1 = WTAREA / ( State_Chm%WetAeroRadi(I,J,L,8)/DFKG_SO2 +
-     &           4.e+0_fp/(XGAMMA*XMMS_SO2) )
+         IF ( 1 > 0 ) THEN
+             KLH1 = ( State_Chm%AeroArea(I,J,L,1) +
+     &                State_Chm%AeroArea(I,J,L,8) +
+     &                State_Chm%AeroArea(I,J,L,9) +
+     &                State_Chm%AeroArea(I,J,L,10)+
+     &                State_Chm%AeroArea(I,J,L,11) ) /
+     &              ( State_Chm%WetAeroRadi(I,J,L,8)/DFKG_SO2 +
+     &              4.e+0_fp/(XGAMMA*XMMS_SO2) )
+         ELSE
+             KLH1 = WTAREA / ( State_Chm%WetAeroRadi(I,J,L,8)/DFKG_SO2 +
+     &              4.e+0_fp/(XGAMMA*XMMS_SO2) )
+         ENDIF
       ELSE
           KLH1 = 0.e+0_fp
       ENDIF
@@ -2869,8 +2879,8 @@
          IF ( GET_MONTH()>=3 .AND. GET_MONTH()<=11 ) THEN
             KLH1 = 0.e+0_fp
          ELSE
-            IF ( X < 100.0 .OR. X > 135.0 .OR.
-     &           Y <  22.0 .OR. Y >  50.0 ) THEN
+            IF ( X < 100.0 .OR. X > 150.0 .OR.
+     &           Y <  18.0 .OR. Y >  54.0 ) THEN
                KLH1 = 0.e+0_fp
             ENDIF
          ENDIF
