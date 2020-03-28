@@ -548,7 +548,7 @@ CONTAINS
     ! Local parameter
     LOGICAL,  PARAMETER :: T        = .TRUE.         ! Yes
     LOGICAL,  PARAMETER :: F        = .FALSE.        ! No
-    REAL(f8), PARAMETER :: To_M_atm = 9.86923e-3_f8  ! mol/m3/Pa -> M/atm
+    REAL(f8), PARAMETER :: To_M_atm = 101.325_f8  ! mol/m3/Pa -> M/atm
 
     !=====================================================================
     ! Spc_Info begins here!
@@ -692,7 +692,7 @@ CONTAINS
 
              ! Turn off rainout only when 237 K <= T < 258K.
              ! NOTE: Rainout efficiency is 0.8 because these are SOA species.
-             RainEff = (/ 0.8_fp, 0.0_fp, 0.8_fp /)
+             RainEff = (/ 0.4_fp, 0.0_fp, 0.8_fp /) !GanLuo
 
              Formula       = ''
              MW_g          = 150.0_fp
@@ -732,7 +732,7 @@ CONTAINS
              KcScale  = (/ 1.0_fp, 0.5_fp, 1.0_fp /)
 
              ! Turn off rainout only when 237 K <= T < 258K.
-             RainEff  = (/ 1.0_fp, 0.0_fp, 1.0_fp /)
+             RainEff  = (/ 0.4_fp, 0.0_fp, 0.5_fp /) !GanLuo
 
              Formula       = ''
              MW_g          = 12.01_fp
@@ -754,11 +754,11 @@ CONTAINS
 
              ! Halve the Kc (cloud condensate -> precip) rate
              ! for the temperature range T > 258 K
-             KcScale  = (/ 1.0_fp, 1.0_fp, 0.5_fp /)
+             KcScale  = (/ 1.0_fp, 1.0_fp, 0.0_fp /) !GanLuo
 
              ! Allow rainout of BCPO when T < 258 K, because
              ! BCPO is considered to be IN.
-             RainEff  = (/ 1.0_fp, 1.0_fp, 0.0_fp /)
+             RainEff  = (/ 0.5_fp, 0.05_fp, 0.0_fp /) !GanLuo
 
              Formula       = ''
              MW_g          = 12.01_fp
@@ -1259,7 +1259,7 @@ CONTAINS
 
              ! Allow rainout of dust when T < 258K, because dust
              ! is considered to be IN.
-             RainEff = (/ 1.0_fp, 1.0_fp, 0.0_fp /)
+             RainEff = (/ 1.0_fp, 0.1_fp, 0.0_fp /) !GanLuo
 
              Formula       = ''
              MW_g          = 29.0_fp
@@ -1294,7 +1294,7 @@ CONTAINS
 
              ! Allow rainout of dust when T < 258K, because dust
              ! is considered to be IN.
-             RainEff       = (/ 1.0_fp, 1.0_fp, 0.0_fp /)
+             RainEff       = (/ 1.0_fp, 0.1_fp, 0.0_fp /) !GanLuo
 
              Formula       = ''
              MW_g          = 29.0_fp
@@ -1330,7 +1330,7 @@ CONTAINS
 
              ! Allow rainout of dust when T < 258K, because dust
              ! is considered to be IN.
-             RainEff       = (/ 1.0_fp, 1.0_fp, 0.0_fp /)
+             RainEff       = (/ 1.0_fp, 0.1_fp, 0.0_fp /) !GanLuo
 
              Formula       = ''
              MW_g          = 29.0_fp
@@ -1366,7 +1366,7 @@ CONTAINS
 
              ! Allow rainout of dust when T < 258K, because dust
              ! is considered to be IN.
-             RainEff       = (/ 1.0_fp, 1.0_fp, 0.0_fp /)
+             RainEff       = (/ 1.0_fp, 0.1_fp, 0.0_fp /) !GanLuo
 
              Formula       = ''
              MW_g          = 29.0_fp
@@ -1646,12 +1646,12 @@ CONTAINS
              !%%% with both gas-phase and aerosol parameters. (bmy, 9/28/15)
 
              ! Do not reduce the Kc (cloud condensate -> precip) rate
-             KcScale       = (/ 1.0_fp, 1.0_fp, 1.0_fp /)
+             KcScale       = (/ 1.0_fp, 0.5_fp, 1.0_fp /) !GanLuo
 
              ! Allow rainout of HNO3 when T < 258K, becasue HNO3
              ! is considered to be IN.
 !GanLuo, no remove in mixing cloud RainEff = (/ 1.0_fp, 1.0_fp, 1.0_fp /)
-             RainEff       = (/ 1.0_fp, 0.0_fp, 1.0_fp /)
+             RainEff       = (/ 0.4_fp, 0.0_fp, 1.0_fp /) !GanLuo
 
              FullName      = 'Nitric acid'
              Formula       = 'HNO3'
@@ -1820,7 +1820,7 @@ CONTAINS
 
              ! Turn off rainout only when 237 K <= T < 258K.
              ! NOTE: Rainout efficiency is 0.8 because these are SOA species.
-             RainEff       = (/ 0.8_fp, 0.0_fp, 0.8_fp /)
+             RainEff       = (/ 0.4_fp, 0.0_fp, 0.8_fp /) !GanLuo
 
              Formula       = ''
              MW_g          = 102.0_fp
@@ -1843,7 +1843,7 @@ CONTAINS
 
              ! Turn off rainout only when 237 K <= T < 258K.
              ! NOTE: Rainout efficiency is 0.8 because these are SOA species.
-             RainEff       = (/ 0.8_fp, 0.0_fp, 0.8_fp /)
+             RainEff       = (/ 0.4_fp, 0.0_fp, 0.8_fp /)
 
              Formula       = ''
              MW_g          = 14.0_fp
@@ -1901,7 +1901,7 @@ CONTAINS
 
              ! Turn off rainout only when 237 K <= T < 258K.
              ! NOTE: Rainout efficiency is 0.8 because these are SOA species.
-             RainEff       = (/ 0.8_fp, 0.0_fp, 0.8_fp /)
+             RainEff       = (/ 0.4_fp, 0.0_fp, 0.8_fp /) !GanLuo
 
              Formula       = ''
              MW_g          = 226.0_fp
@@ -2049,7 +2049,7 @@ CONTAINS
 
              ! Turn off rainout only when 237 K <= T < 258K.
              ! NOTE: Rainout efficiency is 0.8 because these are SOA species.
-             RainEff       = (/ 0.8_fp, 0.0_fp, 0.8_fp /)
+             RainEff       = (/ 0.4_fp, 0.0_fp, 0.8_fp /) !GanLuo
 
              Formula       = 'C5H14O5'
              MW_g          = 154.0_fp
@@ -2170,7 +2170,7 @@ CONTAINS
 
              ! Turn off rainout only when 237 K <= T < 258K.
              ! NOTE: Rainout efficiency is 0.8 because these are SOA species.
-             RainEff       = (/ 0.8_fp, 0.0_fp, 0.8_fp /)
+             RainEff       = (/ 0.4_fp, 0.0_fp, 0.8_fp /) !GanLuo
 
              Formula       = ''
              MW_g          = 14.0_fp
@@ -2236,7 +2236,7 @@ CONTAINS
                    KcScale  = (/ 1.0_fp, 0.5_fp, 1.0_fp /)
 
                    ! Turn off rainout only when 237 K <= T < 258K.
-                   RainEff  = (/ 1.0_fp, 0.0_fp, 1.0_fp /)
+                   RainEff  = (/ 0.4_fp, 0.0_fp, 0.5_fp /) !GanLuo
 
                 CASE( 'MOPO' )
                    Fullname = 'Hydrophobic marine organic carbon aerosol'
@@ -2244,7 +2244,7 @@ CONTAINS
                    ! For all temperatures:
                    ! (1) Halve the Kc (cloud condensate -> precip) rate
                    ! (2) Turn off rainout (OCPO is hydrophobic)
-                   KcScale  = (/ 0.5_fp, 0.5_fp, 0.5_fp /)
+                   KcScale  = (/ 0.0_fp, 0.0_fp, 0.0_fp /) !GanLuo
                    RainEff  = (/ 0.0_fp, 0.0_fp, 0.0_fp /)
 
              END SELECT
@@ -2297,7 +2297,7 @@ CONTAINS
              KcScale       = (/ 1.0_fp, 0.5_fp, 1.0_fp /)
 
              ! Turn off rainout only when 237 K <= T < 258K.
-             RainEff       = (/ 1.0_fp, 0.0_fp, 1.0_fp /)
+             RainEff       = (/ 0.4_fp, 0.0_fp, 1.0_fp /) !GanLuo
 
              ! Enforce minimum dry deposition velocity (Vd) for MSA
              ! (cf. Mian Chin's GOCART model)
@@ -2428,7 +2428,7 @@ CONTAINS
              ! (cf. Mian Chin's GOCART model)
              ! Minimum Vd over snow/ice : 0.2 cm/s
              ! Minimum Vd over land     : 0.3 cm/s
-             DvzMinVal = (/ 0.2_fp, 0.3_fp /)
+             DvzMinVal = (/ 0.01_fp, 0.01_fp /) !GanLuo
 
              FullName      = 'Ammonia'
              Formula       = 'NH3'
@@ -2436,7 +2436,7 @@ CONTAINS
              Is_Gas        = T
              Is_Drydep     = T
              Is_Wetdep     = T
-             DD_DvzAerSnow = 0.03_fp
+!             DD_DvzAerSnow = 0.03_fp !GanLuo
              DD_DvzMinVal  = DvzMinVal
              DD_F0         = 0.0_fp
 #if defined( NEW_HENRY_CONSTANTS )
@@ -2458,7 +2458,7 @@ CONTAINS
              KcScale       = (/ 1.0_fp, 0.5_fp, 1.0_fp /)
 
              ! Turn off rainout only when 237 K <= T < 258K.
-             RainEff       = (/ 1.0_fp, 0.0_fp, 1.0_fp /)
+             RainEff       = (/ 0.4_fp, 0.0_fp, 1.0_fp /) !GanLuo
 
              ! Enforce minimum dry deposition velocity (Vd) for NH4
              ! (cf. Mian Chin's GOCART model)
@@ -2487,7 +2487,7 @@ CONTAINS
              KcScale   = (/ 1.0_fp, 0.5_fp, 1.0_fp /)
 
              ! Turn off rainout only when 237 K <= T < 258K.
-             RainEff   = (/ 1.0_fp, 0.0_fp, 1.0_fp /)
+             RainEff   = (/ 0.4_fp, 0.0_fp, 1.0_fp /) !GanLuo
 
              ! Enforce minimum dry deposition velocity (Vd) for NIT
              ! (cf. Mian Chin's GOCART model)
@@ -2545,7 +2545,7 @@ CONTAINS
              KcScale       = (/ 1.0_fp, 0.5_fp, 1.0_fp /)
 
              ! Turn off rainout only when 237 K <= T < 258K.
-             RainEff       = (/ 1.0_fp, 0.0_fp, 1.0_fp /)
+             RainEff       = (/ 0.4_fp, 0.0_fp, 1.0_fp /) !GanLuo
 
              Formula       = ''
              MW_g          = 31.4_fp
@@ -2699,7 +2699,7 @@ CONTAINS
              KcScale       = (/ 1.0_fp, 0.5_fp, 1.0_fp /)
 
              ! Turn off rainout only when 237 K <= T < 258K.
-             RainEff       = (/ 1.0_fp, 0.0_fp, 1.0_fp /)
+             RainEff       = (/ 0.4_fp, 0.0_fp, 0.5_fp /) !GanLuo
 
              Formula       = ''
              MW_g          = 12.01_fp
@@ -2722,7 +2722,7 @@ CONTAINS
              ! For all temperatures:
              ! (1) Halve the Kc (cloud condensate -> precip) rate
              ! (2) Turn off rainout (OCPO is hydrophobic)
-             KcScale       = (/ 0.5_fp, 0.5_fp, 0.5_fp /)
+             KcScale       = (/ 0.0_fp, 0.0_fp, 0.0_fp /) !GanLuo
              RainEff       = (/ 0.0_fp, 0.0_fp, 0.0_fp /)
 
              Formula       = ''
@@ -2759,7 +2759,7 @@ CONTAINS
 
              ! Turn off rainout only when 237 K <= T < 258K.
              ! NOTE: Rainout efficiency is 0.8 because these are SOA species.
-             RainEff       = (/ 0.8_fp, 0.0_fp, 0.8_fp /)
+             RainEff       = (/ 0.4_fp, 0.0_fp, 0.8_fp /) !GanLuo
 
              Formula       = ''
              MW_g          = 12.01_fp
@@ -2813,7 +2813,7 @@ CONTAINS
              KcScale       = (/ 1.0_fp, 0.5_fp, 1.0_fp /)
 
              ! Turn off rainout only when 237 K <= T < 258K.
-             RainEff       = (/ 1.0_fp, 0.0_fp, 1.0_fp /)   
+             RainEff       = (/ 0.4_fp, 0.0_fp, 1.0_fp /) !GanLuo
 
              FullName      = 'Anthropogenic iron'
              Formula       = 'Fe'
@@ -2832,7 +2832,7 @@ CONTAINS
              ! For all temperatures:
              ! (1) Halve the Kc (cloud condensate -> precip) rate
              ! (2) Turn off rainout (these are hydrophobic species)
-             KcScale       = (/ 0.5_fp, 0.5_fp, 0.5_fp /)
+             KcScale       = (/ 0.0_fp, 0.0_fp, 0.0_fp /) !GanLuo
              RainEff       = (/ 0.0_fp, 0.0_fp, 0.0_fp /)
 
              FullName      ='Lumped aerosol primary SVOCs'
@@ -2857,7 +2857,7 @@ CONTAINS
              ! For all temperatures:
              ! (1) Halve the Kc (cloud condensate -> precip) rate
              ! (2) Turn off rainout (these are hydrophobic species)
-             KcScale       = (/ 0.5_fp, 0.5_fp, 0.5_fp /)
+             KcScale       = (/ 0.0_fp, 0.0_fp, 0.0_fp /) !GanLuo
              RainEff       = (/ 0.0_fp, 0.0_fp, 0.0_fp /)
 
              FullName      ='Lumped aerosol primary SVOCs'
@@ -3039,7 +3039,7 @@ CONTAINS
              KcScale       = (/ 1.0_fp, 0.5_fp, 1.0_fp /)
 
              ! Turn off rainout only when 237 K <= T < 258K.
-             RainEff       = (/ 1.0_fp, 0.0_fp, 1.0_fp /)
+             RainEff       = (/ 0.4_fp, 0.0_fp, 1.0_fp /) !GanLuo
 
              Formula       = ''
              MW_g          = 31.4_fp
@@ -3076,7 +3076,7 @@ CONTAINS
              KcScale       = (/ 1.0_fp, 0.5_fp, 1.0_fp /)
 
              ! Turn off rainout only when 237 K <= T < 258K.
-             RainEff       = (/ 1.0_fp, 0.0_fp, 1.0_fp /)
+             RainEff       = (/ 0.4_fp, 0.0_fp, 1.0_fp /) !GanLuo
 
              FullName      = Fullname
              Formula       = ''
@@ -3112,7 +3112,9 @@ CONTAINS
              ! (cf. Mian Chin's GOCART model)
              ! Minimum Vd over snow/ice : 0.2 cm/s
              ! Minimum Vd over land     : 0.3 cm/s
-             DvzMinVal     = (/ 0.2_fp, 0.3_fp /)
+!             DvzMinVal     = (/ 0.2_fp, 0.3_fp /)
+!GanLuo
+             DvzMinVal     = (/ 0.01_fp, 0.01_fp /)
 
              FullName      = 'Sulfur dioxide'
              Formula       = 'SO2'
@@ -3120,7 +3122,7 @@ CONTAINS
              Is_Gas        = T
              Is_Drydep     = T
              Is_Wetdep     = T
-             DD_DvzAerSnow = 0.03_fp
+!GanLuo       DD_DvzAerSnow = 0.03_fp
              DD_DvzMinVal  = DvzMinVal
              DD_F0         = 0.0_fp
 #if defined( NEW_HENRY_CONSTANTS )
@@ -3128,10 +3130,17 @@ CONTAINS
              Henry_CR      = 2900.0_f8
 #else
              DD_Hstar_old  = 1.00e+5_fp
+!GanLuo
+             Henry_K0      = 1.22e+0_fp
+             Henry_CR      = 3100.0_f8
 #endif
              WD_AerScavEff = 1.0_fp
              WD_KcScaleFac = KcScale
              WD_RainoutEff = RainEff
+!GanLuo
+             WD_RetFactor  = 5.0e-2_fp
+             WD_LiqAndGas  = T
+             WD_ConvFacI2G = 6.17395e-1_fp
 
           ! Add new tracer SO4P, SJS 20190102
           !---------------------------------
@@ -3168,7 +3177,7 @@ CONTAINS
              KcScale       = (/ 1.0_fp, 0.5_fp, 1.0_fp /)
 
              ! Turn off rainout only when 237 K <= T < 258K.
-             RainEff       = (/ 1.0_fp, 0.0_fp, 1.0_fp /)
+             RainEff       = (/ 0.4_fp, 0.0_fp, 1.0_fp /) !GanLuo
 
              ! Enforce minimum dry deposition velocity (Vd) for SO4
              ! (cf. Mian Chin's GOCART model)
@@ -3213,7 +3222,7 @@ CONTAINS
              KcScale       = (/ 1.0_fp, 0.5_fp, 1.0_fp /)
 
              ! Turn off rainout only when 237 K <= T < 258K.
-             RainEff       = (/ 1.0_fp, 0.0_fp, 1.0_fp /)
+             RainEff       = (/ 0.4_fp, 0.0_fp, 1.0_fp /) !GanLuo
 
              FullName      = 'Hydroxymethanesulfonate'
              Formula       = 'CH3SO4'
@@ -3267,7 +3276,7 @@ CONTAINS
              KcScale       = (/ 1.0_fp, 0.5_fp, 1.0_fp /)
 
              ! Turn off rainout only when 237 K <= T < 258K.
-             RainEff       = (/ 1.0_fp, 0.0_fp, 1.0_fp /)
+             RainEff       = (/ 0.4_fp, 0.0_fp, 1.0_fp /) !GanLuo
 
              Formula       = ''
              MW_g          = 31.4_fp
@@ -3291,7 +3300,7 @@ CONTAINS
 
              ! Turn off rainout only when 237 K <= T < 258K.
              ! NOTE: Rainout efficiency is 0.8 because these are SOA species.
-             RainEff       = (/ 0.8_fp, 0.0_fp, 0.8_fp /)
+             RainEff       = (/ 0.4_fp, 0.0_fp, 0.8_fp /) !GanLuo
 
              FullName      = 'Aerosol-phase IEPOX'
              Formula       = 'C5H10O3'
@@ -3314,7 +3323,7 @@ CONTAINS
 
              ! Turn off rainout only when 237 K <= T < 258K.
              ! NOTE: Rainout efficiency is 0.8 because these are SOA species.
-             RainEff       = (/ 0.8_fp, 0.0_fp, 0.8_fp /)
+             RainEff       = (/ 0.4_fp, 0.0_fp, 0.8_fp /) !GanLuo
 
              FullName      = 'Aerosol-phase glyoxal'
              Formula       = 'C2H2O2'
@@ -3337,7 +3346,7 @@ CONTAINS
 
              ! Turn off rainout only when 237 K <= T < 258K.
              ! NOTE: Rainout efficiency is 0.8 because these are SOA species.
-             RainEff       = (/ 0.8_fp, 0.0_fp, 0.8_fp /)
+             RainEff       = (/ 0.4_fp, 0.0_fp, 0.8_fp /) !GanLuo
 
              FullName      = 'Aerosol-phase IMAE'
              Formula       = 'C4H6O3'
@@ -3360,7 +3369,7 @@ CONTAINS
 
              ! Turn off rainout only when 237 K <= T < 258K.
              ! NOTE: Rainout efficiency is 0.8 because these are SOA species.
-             RainEff       = (/ 0.8_fp, 0.0_fp, 0.8_fp /)
+             RainEff       = (/ 0.4_fp, 0.0_fp, 0.8_fp /) !GanLuo
 
              FullName      = 'Aerosol-phase methylglyoxal'
              Formula       = 'C3H4O2'
@@ -3397,7 +3406,7 @@ CONTAINS
 
              ! Turn off rainout only when 237 K <= T < 258K.
              ! NOTE: Rainout efficiency is 0.8 because these are SOA species.
-             RainEff       = (/ 0.8_fp, 0.0_fp, 0.8_fp /)
+             RainEff       = (/ 0.4_fp, 0.0_fp, 0.8_fp /) !GanLuo
 
              FullName      = FullName
              Formula       = ''
@@ -3431,7 +3440,7 @@ CONTAINS
 
              ! Turn off rainout only when 237 K <= T < 258K.
              ! NOTE: Rainout efficiency is 0.8 because these are SOA species.
-             RainEff       = (/ 0.8_fp, 0.0_fp, 0.8_fp /)
+             RainEff       = (/ 0.4_fp, 0.0_fp, 0.8_fp /) !GanLuo
 
              FullName      = FullName
              Formula       = ''
@@ -3758,7 +3767,7 @@ CONTAINS
              KcScale       = (/ 1.0_fp, 0.5_fp, 1.0_fp /)
 
              ! Turn off rainout only when 237 K <= T < 258K.
-             RainEff       = (/ 1.0_fp, 0.0_fp, 1.0_fp /)
+             RainEff       = (/ 0.4_fp, 0.0_fp, 1.0_fp /) !GanLuo
 
              FullName      = 'Fine sea salt bromine'
              Formula       = 'Br'
@@ -3795,7 +3804,7 @@ CONTAINS
              KcScale       = (/ 1.0_fp, 0.5_fp, 1.0_fp /)
 
              ! Turn off rainout only when 237 K <= T < 258K.
-             RainEff       = (/ 1.0_fp, 0.0_fp, 1.0_fp /)
+             RainEff       = (/ 0.4_fp, 0.0_fp, 1.0_fp /) !GanLuo
 
              FullName      = 'Coarse sea salt bromine'
              Formula       = 'Br'
@@ -3833,7 +3842,7 @@ CONTAINS
              KcScale       = (/ 1.0_fp, 0.5_fp, 1.0_fp /)
 
              ! Turn off rainout only when 237 K <= T < 258K.
-             RainEff       = (/ 1.0_fp, 0.0_fp, 1.0_fp /)
+             RainEff       = (/ 0.4_fp, 0.0_fp, 1.0_fp /) !GanLuo
 
              FullName      = 'Fine sea salt iodine'
              Formula       = 'I'
@@ -3870,7 +3879,7 @@ CONTAINS
              KcScale       = (/ 1.0_fp, 0.5_fp, 1.0_fp /)
 
              ! Turn off rainout only when 237 K <= T < 258K.
-             RainEff       = (/ 1.0_fp, 0.0_fp, 1.0_fp /)
+             RainEff       = (/ 0.4_fp, 0.0_fp, 1.0_fp /) !GanLuo
 
              FullName      = 'Coarse sea salt iodine'
              Formula       = 'I'
@@ -3896,7 +3905,7 @@ CONTAINS
              KcScale   = (/ 1.0_fp, 0.5_fp, 1.0_fp /)
 
              ! Turn off rainout only when 237 K <= T < 258K.
-             RainEff   = (/ 1.0_fp, 0.0_fp, 1.0_fp /)
+             RainEff   = (/ 0.4_fp, 0.0_fp, 1.0_fp /) !GanLuo
 
              ! (cf. Mian Chin's GOCART model)
              ! Minimum Vd over snow/ice : 0.01 cm/s
@@ -3936,7 +3945,7 @@ CONTAINS
              KcScale       = (/ 1.0_fp, 0.5_fp, 1.0_fp /)
 
              ! Turn off rainout only when 237 K <= T < 258K.
-             RainEff       = (/ 1.0_fp, 0.0_fp, 1.0_fp /)
+             RainEff       = (/ 0.4_fp, 0.0_fp, 1.0_fp /) !GanLuo
 
              FullName      = 'Lead-210 isotope'
              Formula       = 'Pb'
@@ -3958,7 +3967,7 @@ CONTAINS
              KcScale       = (/ 1.0_fp, 0.5_fp, 1.0_fp /)
 
              ! Turn off rainout only when 237 K <= T < 258K.
-             RainEff       = (/ 1.0_fp, 0.0_fp, 1.0_fp /)
+             RainEff       = (/ 0.4_fp, 0.0_fp, 1.0_fp /) !GanLuo
 
              FullName      = 'Beryllium-7 isotope'
              Formula       = 'Be'
@@ -4244,7 +4253,7 @@ CONTAINS
              ! (1) Halve the Kc (cloud condensate -> precip) rate
              ! (2) DON'T TURN OFF RAINOUT! (at least until we talk to Team Hg)
              KcScale       = (/ 1.0_fp, 0.5_fp, 1.0_fp /)
-             RainEff       = (/ 1.0_fp, 1.0_fp, 1.0_fp /)
+             RainEff       = (/ 0.4_fp, 1.0_fp, 1.0_fp /) !GanLuo
 
              FullName      = FullName
              Formula       = 'Hg'
@@ -4402,11 +4411,11 @@ CONTAINS
 
                    ! Halve the Kc (cloud condensate -> precip) rate
                    ! for the temperature range 237 K <= T < 258 K.
-                   KcScale  = (/ 1.0_fp, 1.0_fp, 0.5_fp /)
+                   KcScale  = (/ 1.0_fp, 0.5_fp, 0.0_fp /) !GanLuo
 
                    ! Allow rainout of POPPBCPO when T < 258 K, because
                    ! POPPBCPO is considered to be IN.
-                   RainEff  = (/ 1.0_fp, 1.0_fp, 0.0_fp /)
+                   RainEff  = (/ 0.5_fp, 0.0_fp, 0.0_fp /) !GanLuo
 
                 CASE( 'POPPOCPO' )
                    FullName = TRIM( FullName ) // ' hydrophobic organic carbon'
@@ -4415,7 +4424,7 @@ CONTAINS
                    ! For all temperatures:
                    ! (1) Halve the Kc (cloud condensate -> precip) rate
                    ! (2) Turn off rainout (it's hydrophobic)
-                   KcScale  = (/ 0.5_fp, 0.5_fp, 0.5_fp /)
+                   KcScale  = (/ 0.0_fp, 0.0_fp, 0.0_fp /) !GanLuo
                    RainEff  = (/ 0.0_fp, 0.0_fp, 0.0_fp /)
 
              END SELECT
@@ -4475,7 +4484,7 @@ CONTAINS
              KcScale = (/ 1.0_fp, 0.5_fp, 1.0_fp /)
 
              ! Turn off rainout only when 237 K <= T < 258K.
-             RainEff = (/ 1.0_fp, 0.0_fp, 1.0_fp /)
+             RainEff = (/ 0.4_fp, 0.0_fp, 1.0_fp /) !GanLuo
 
              FullName      = FullName
              Formula       = Formula

@@ -2851,6 +2851,7 @@
       ! First order rate constant with respect to SO2 (s-1)
       ! State_Chm%WetAeroRadi = Wet Aerosol Radius [cm]
       ! WTAREA = [cm^2 wet aerosol sfc area cm^-3 air]
+      ! SJS-OPTION
       IF ( XGAMMA > 0.e+0_fp ) THEN
          IF ( 1 > 0 ) THEN
              KLH1 = ( State_Chm%AeroArea(I,J,L,1) +

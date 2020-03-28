@@ -946,8 +946,6 @@
       REAL(fp),      POINTER   :: p_CLDICE
       REAL(fp),      POINTER   :: p_CLDLIQ
       REAL(fp),      POINTER   :: p_T
-      REAL(fp),      POINTER   :: H2O2s(:,:,:)
-      REAL(fp),      POINTER   :: SO2s(:,:,:)
 
       ! Objects
       TYPE(Species), POINTER   :: SpcInfo
@@ -970,8 +968,6 @@
       p_CLDICE   => NULL()
       p_CLDLIQ   => NULL()
       p_T        => NULL()
-      H2O2s      => State_Chm%H2O2AfterChem
-      SO2s       => State_Chm%SO2AfterChem
       SpcInfo    => State_Chm%SpcData(N)%Info
 
       ! ISOL is the wetdep ID (will be -999 if not a wetdep species)
@@ -988,56 +984,6 @@
       KcScale    = SpcInfo%WD_KcScaleFac
 
       !=================================================================
-      ! %%% SPECIAL CASE %%%
-      ! SO2 scavenges like an aerosol although it is considered
-      ! to be a gas-phase species elsewhere (e.g. dry deposition)
-      !=================================================================
-      IF ( SpcInfo%WD_Is_SO2 ) THEN
-
-         ! Compute fraction of SO2 scavenged
-         CALL F_AEROSOL( KC, KcScale, State_Met, Input_Opt, F )
-
-         !--------------------------------------------------------------
-         ! Coupled full chemistry/aerosol simulation:
-         ! Use the wet scavenging formula of Chin et al [1996], 
-         ! such that a soluble fraction of SO2 is limited by the
-         ! availability of H2O2 in the precipitating grid box. 
-         ! Scavenge the soluble SO2 at the same rate as the sulfate.
-         ! Update H2O2_sav and SO2_sav for use in RAINOUT, WASHOUT
-         !--------------------------------------------------------------
-         DO L = 2, LLPAR
-         DO J = 1, JJPAR
-         DO I = 1, IIPAR
-
-            ! Make sure to deplete H2O2s the same as SO2s. 
-            ! (dkh, rjp, bmy, 11/17/05)
-            IF ( SO2s(I,J,L) > TINY_FP ) THEN
-       
-               ! Limit F
-               SO2LOSS      = MIN( H2O2s(I,J,L), SO2s(I,J,L) )
-               F(I,J,L)     = F(I,J,L) * SO2LOSS / SO2s(I,J,L)
-               F(I,J,L)     = MAX(F(I,J,L), 0e+0_fp)
-        
-               ! Update saved H2O2 concentration
-               H2O2s(I,J,L) = H2O2s(I,J,L) - ( SO2s(I,J,L) * F(I,J,L) )
-               H2O2s(I,J,L) = MAX( H2O2s(I,J,L), TINY_FP )
-        
-            ELSE
-
-               ! Set F = 0 if SO2s < EPSILON (dkh, rjp, bmy, 11/17/05) 
-               F(I,J,L)     = 0e+0_fp
-        
-            ENDIF
-
-            ! Update SO2
-            SO2s(I,J,L)     = SO2s(I,J,L) * ( 1e+0_fp - F(I,J,L) )
-            SO2s(I,J,L)     = MAX( SO2s(I,J,L), TINY_FP )
-              
-         ENDDO
-         ENDDO
-         ENDDO
-
-      !=================================================================
       ! For all other species, compute the fraction of species 
       ! scavenged in updrafts.
       !=================================================================
@@ -1050,7 +996,7 @@
       ! fraction of HNO3 scavenged out of the column further down
       ! in the last ELSE block.
       !--------------------------------------------------------------
-      ELSE IF ( SpcInfo%Is_Gas .and. ( .not. SpcInfo%WD_Is_HNO3 ) ) THEN
+      IF ( SpcInfo%Is_Gas .and. ( .not. SpcInfo%WD_Is_HNO3 ) ) THEN
 
          ! No scavenging at the surface
          F(:,:,1) = 0.0_fp
@@ -1162,8 +1108,6 @@
       p_CLDICE  => NULL()
       p_CLDLIQ  => NULL()
       p_T       => NULL()
-      H2O2s     => NULL()
-      SO2s      => NULL()
       SpcInfo   => NULL()
 
       END SUBROUTINE COMPUTE_F
@@ -1222,7 +1166,10 @@
       ! Scalars
       REAL(fp) :: L2G, I2G, C_TOT, F_L, F_I
       REAL(f8) :: K0, CR, pKa
-      
+
+!GanLuo
+      REAL(f8) :: Hplus,HCSO2,Ks1,Ks2
+
       !=================================================================
       ! COMPUTE_Ki begins here!
       !=================================================================
@@ -1231,6 +1178,27 @@
       K0   = SpcInfo%Henry_K0
       CR   = SpcInfo%Henry_CR
       pKa  = SpcInfo%Henry_pKa
+
+!GanLuo
+      IF ( SpcInfo%FullName == 'Sulfur dioxide' ) THEN
+         ! Henry's constant [mol/l-atm] and Effective Henry's constant
+         Hplus =10.d0**(-4.5d0)
+         HCSO2  = 1.22e+0_fp * EXP( 10.55e+0_fp
+     &          * ( 298.15e+0_fp / T - 1.e+0_fp) )
+
+         Ks1 = 1.30e-2_fp * EXP( 6.75e+0_fp
+     &       * ( 298.15e+0_fp / T - 1.e+0_fp ) )
+
+         Ks2 = 6.31e-8_fp * EXP( 5.05e+0_fp
+     &       * ( 298.15e+0_fp / T - 1.e+0_fp ) )
+
+         K0  = HCSO2*
+     &  (1.e+0_fp + Ks1/Hplus + Ks1*Ks2/(Hplus*Hplus))
+
+         CR  = 0.d0
+
+         pKa = -999.d0
+      ENDIF
 
       IF ( SpcInfo%WD_LiqAndGas ) THEN
 
@@ -1507,8 +1475,6 @@
       REAL(fp),      POINTER :: p_CLDICE
       REAL(fp),      POINTER :: p_CLDLIQ
       REAL(fp),      POINTER :: p_T
-      REAL(fp),      POINTER :: H2O2s(:,:,:)
-      REAL(fp),      POINTER :: SO2s(:,:,:)
 
       ! Objects
       TYPE(Species), POINTER :: SpcInfo
@@ -1528,56 +1494,13 @@
       p_CLDICE => CLDICE(I,J,L)
       p_CLDLIQ => CLDLIQ(I,J,L)
       p_T      => State_Met%T(I,J,L)
-      H2O2s    => State_Chm%H2O2AfterChem
-      SO2s     => State_Chm%SO2AfterChem
       SpcInfo  => State_Chm%SpcData(N)%Info
-
-      !=================================================================
-      ! %%% SPECIAL CASE %%%
-      ! SO2 scavenges like an aerosol although it is considered
-      ! to be a gas-phase species elsewhere (e.g. dry deposition)
-      !=================================================================
-      IF ( SpcInfo%WD_Is_SO2 ) THEN
-  
-         ! Update SO2 and H2O2
-         IF ( SO2s(I,J,L) > TINY_FP ) THEN 
-
-            ! Treat SO2 as an aerosol
-            RAINFRAC = GET_RAINFRAC( K_RAIN, F, DT )
-
-            ! Apply temperature-dependent rainout efficiencies
-            ! This accounts for impaction scavenging of certain aerosols
-            CALL APPLY_RAINOUT_EFF( p_T, SpcInfo, RAINFRAC )
-! Do not set RAINFRAC to 0.0, SJS 20190701
-!GanLuo
-!            RAINFRAC     = 0.0_fp
-
-            ! Limit RAINFRAC 
-            SO2LOSS      = MIN( SO2s(I,J,L), H2O2s(I,J,L) )
-            RAINFRAC     = SO2LOSS * RAINFRAC / SO2s(I,J,L)
-            RAINFRAC     = MAX( RAINFRAC, 0e+0_fp )
-         
-            ! Update saved H2O2 concentration
-            H2O2s(I,J,L) = H2O2s(I,J,L) - ( SO2s(I,J,L) * RAINFRAC )
-            H2O2s(I,J,L) = MAX( H2O2s(I,J,L), TINY_FP )
-           
-         ELSE
-
-            ! If SO2s is not defined (i.e. if wetdep and convection
-            ! are turned off), then set 
-            RAINFRAC     = 0.0_fp
-           
-         ENDIF
-
-         ! Update saved SO2 concentration
-         SO2s(I,J,L)     = SO2s(I,J,L) * ( 1.0_fp - RAINFRAC )
-         SO2s(I,J,L)     = MAX( SO2s(I,J,L), TINY_FP )
 
       !=================================================================
       ! Compute rainout fraction for soluble gas-phase species
       ! (except for HNO3 and H2SO4 which scavenge like aerosols)
       !=================================================================
-      ELSE IF ( SpcInfo%Is_Gas                 .and. 
+      IF ( SpcInfo%Is_Gas                 .and.
      &          ( .not. SpcInfo%WD_Is_HNO3 )   .and. 
      &          ( .not. SpcInfo%WD_Is_H2SO4 ) ) THEN  
 
@@ -1611,8 +1534,6 @@
       p_CLDICE => NULL()
       p_CLDLIQ => NULL()
       p_T      => NULL()
-      H2O2s   => NULL()
-      SO2s    => NULL()
       SpcInfo  => NULL()
 
       END SUBROUTINE RAINOUT
@@ -1893,6 +1814,9 @@
       ! Pointers
       TYPE(Species), POINTER :: SpcInfo
 
+!GanLuo
+      REAL(f8)               :: Hplus,HCSO2,Ks1,Ks2
+
       !=================================================================
       ! WASHOUT begins here!
       !
@@ -1981,34 +1905,36 @@
       !=================================================================
       ELSE IF ( SpcInfo%WD_Is_SO2 ) THEN
 
+         Hplus = 10.0**(-4.5d0)
+
+         ! Henry's constant [mol/l-atm] and Effective Henry's constant
+         ! for SO2
+         HCSO2  = 1.22e+0_fp * EXP( 10.55e+0_fp
+     &          * ( 298.15e+0_fp / TK - 1.e+0_fp) )
+
+         Ks1 = 1.30e-2_fp * EXP( 6.75e+0_fp
+     &       * ( 298.15e+0_fp / TK - 1.e+0_fp ) )
+
+         Ks2 = 6.31e-8_fp * EXP( 5.05e+0_fp
+     &       * ( 298.15e+0_fp / TK - 1.e+0_fp ) )
+
+         K0  = HCSO2*
+     &  (1.e+0_fp + Ks1/Hplus + Ks1*Ks2/(Hplus*Hplus))
+
+         CR  = 0.d0
+
+         pKa = -999.d0
+
+         ! Get the washout fraction for this species
+         CALL WASHFRAC_LIQ_GAS( K0, CR, pKa, PP,       DT,
+     &                          F,  DZ, TK,  WASHFRAC, KIN )
+
          ! NOTE: Even though SO2 is not an aerosol we treat it as SO4 in
          ! wet scavenging.  When evaporation occurs, it returns to SO4.
          KIN      = .TRUE.
-! Do not set WASHFRAC to 0.0, SJS 20190701
-         WASHFRAC = WASHFRAC_FINE_AEROSOL( DT, F, PP, TK )
-!GanLuo         WASHFRAC = WASHFRAC_FINE_AEROSOL( DT, F, PP, TK )
-!         WASHFRAC = 0.D0
 
-         ! Use the wet-scavenging following [Chin et al, 1996] such 
-         ! that a soluble fraction of SO2 is limited by the availability 
-         ! of H2O2 in the precipitating grid box.  Then scavenge the 
-         ! soluble SO2 at the same rate as sulfate.
-         IF ( TK >= 268e+0_fp .AND. SO2s > TINY_FP ) THEN
-         
-            ! Adjust WASHFRAC
-            SO2LOSS  = MIN( SO2s, H2O2s )
-            WASHFRAC = SO2LOSS * WASHFRAC / SO2s
-            WASHFRAC = MAX( WASHFRAC, 0e+0_fp )
-                  
-            ! Deplete H2O2s the same as SO2s (dkh, rjp, bmy, 11/17/05)
-            H2O2s = H2O2s - ( SO2s * WASHFRAC )
-            H2O2s = MAX( H2O2s, TINY_FP )
+         WASHFRAC = WASHFRAC * F
 
-         ELSE
-            WASHFRAC = 0e+0_fp
-         
-         ENDIF
-         
          ! Update saved SO2 concentration 
          SO2s = SO2s * ( 1e+0_fp - WASHFRAC )
          SO2s = MAX( SO2s, TINY_FP ) 
