@@ -2650,7 +2650,7 @@
       ! 20191120, option to use different kinetic data
       SELECT CASE( 0 )
 
-         CASE( 0 ) ! best
+         CASE( 0 ) ! low
 
             KHCHO1 = 3.2e+2_fp *
      &           EXP(-2.7e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
@@ -2663,29 +2663,24 @@
      &           4.8e+3_fp * (Kw_T / AHplus) * 
      &           exp(-4.7e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
 
-         CASE( 1 ) ! low
-
-            KHCHO1 = 3.6e+2_fp *
-     &           EXP(-2.7e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
-
-            KHCHO2 = 1.0e+3_fp *
-     &           EXP(-2.5e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
-
-            KhetdHMSA = 1.1e+4_fp * (Kw_T / AHplus) * 
-     &           exp(-4.7e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
-
-         CASE( 2 ) ! high
+         CASE( 1 ) ! high
 
             KHCHO1 = 7.9e+2_fp *
-     &           EXP(-2.7e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+     &           EXP(-3e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
 
             KHCHO2 = 2.5e+7_fp *
      &           EXP(-2.5e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
 
-            KhetdHMSA = 4.4e-8_fp * 
+            KhetdHMSA = 6.2e-8_fp * 
      &           exp(-1.1e+4_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))+
-     &           3.4e+3_fp * (Kw_T / AHplus) * 
+     &           4.8e+3_fp * (Kw_T / AHplus) * 
      &           exp(-4.7e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+
+         CASE( 2 ) ! lagrange
+
+            KHCHO1 = 9.5e+2_fp
+            KHCHO2 = 1.7e+2_fp
+            KhetdHMSA = 1.1e+4_fp * (Kw_T / AHplus)
 
       END SELECT
 
@@ -8532,14 +8527,15 @@
       !   Henry's Law Constant = 1.3e+2_fp [M/atm]
       !=================================================================
 
-      ! Note: the reaction between HSO3- and HOBr seems to be wrong
+      ! Note: the reaction between HSO3- and HOBr is wrong
       ! given the thesis by Liu 2000
       ! I correct the reaction rate between SO32- and HOBr to dilute
       ! condition, the experiment is for ionic strength of 0.5 M
       ! SJS 20200204
+      ! Revert SJS 20200409
 !      KaqHOBr = (3.2e+9_fp*XHSO3 + 5.0e+9_fp*XSO3) * FHCSO2 * XSO2g
-!      KaqHOBr = 5.0e+9_fp*XSO3 * FHCSO2 * XSO2g
-      KaqHOBr = 1.2e+9_fp*XSO3 * FHCSO2 * XSO2g
+      KaqHOBr = 5.0e+9_fp*XSO3 * FHCSO2 * XSO2g
+!      KaqHOBr = 1.2e+9_fp*XSO3 * FHCSO2 * XSO2g
      &      * P * LWC * R * T
      &      * 1.3e+2_fp
      &      * 1.e+0_fp / ( 1.e+0_fp + ( 1.3e+2_fp * R * T * LWC ) )
@@ -8558,7 +8554,7 @@
       ! 20191120, option to use different kinetic data
       SELECT CASE( 0 )
 
-         CASE( 0 ) ! best
+         CASE( 0 ) ! low
 
             KHCHO1 = 3.2e+2_fp *
      &           EXP(-2.7e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
@@ -8566,34 +8562,29 @@
             KHCHO2 = 3.8e+6_fp *
      &           EXP(-2.5e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
 
-            KdHMSA = 6.2e-8_fp * 
+            KhetdHMSA = 6.2e-8_fp *
      &           exp(-1.1e+4_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))+
-     &           4.8e+3_fp * (Kw_T / Hplus) * 
+     &           4.8e+3_fp * (Kw_T / Hplus) *
      &           exp(-4.7e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
 
-         CASE( 1 ) ! low
-
-            KHCHO1 = 3.6e+2_fp *
-     &           EXP(-2.7e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
-
-            KHCHO2 = 1.0e+3_fp *
-     &           EXP(-2.5e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
-
-            KdHMSA = 1.1e+4_fp * (Kw_T / Hplus) * 
-     &           exp(-4.7e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
-
-         CASE( 2 ) ! high
+         CASE( 1 ) ! high
 
             KHCHO1 = 7.9e+2_fp *
-     &           EXP(-2.7e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+     &           EXP(-3e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
 
             KHCHO2 = 2.5e+7_fp *
      &           EXP(-2.5e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
 
-            KdHMSA = 4.4e-8_fp * 
+            KhetdHMSA = 6.2e-8_fp *
      &           exp(-1.1e+4_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))+
-     &           3.4e+3_fp * (Kw_T / Hplus) * 
+     &           4.8e+3_fp * (Kw_T / Hplus) *
      &           exp(-4.7e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
+
+         CASE( 2 ) ! lagrange
+
+            KHCHO1 = 9.5e+2_fp
+            KHCHO2 = 1.7e+2_fp
+            KhetdHMSA = 1.1e+4_fp * (Kw_T / Hplus)
 
       END SELECT
 
