@@ -8562,7 +8562,7 @@
             KHCHO2 = 3.8e+6_fp *
      &           EXP(-2.5e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
 
-            KhetdHMSA = 6.2e-8_fp *
+            KdHMSA = 6.2e-8_fp *
      &           exp(-1.1e+4_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))+
      &           4.8e+3_fp * (Kw_T / Hplus) *
      &           exp(-4.7e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
@@ -8575,7 +8575,7 @@
             KHCHO2 = 2.5e+7_fp *
      &           EXP(-2.5e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
 
-            KhetdHMSA = 6.2e-8_fp *
+            KdHMSA = 6.2e-8_fp *
      &           exp(-1.1e+4_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))+
      &           4.8e+3_fp * (Kw_T / Hplus) *
      &           exp(-4.7e+3_fp*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
@@ -8584,7 +8584,7 @@
 
             KHCHO1 = 9.5e+2_fp
             KHCHO2 = 1.7e+2_fp
-            KhetdHMSA = 1.1e+4_fp * (Kw_T / Hplus)
+            KdHMSA = 1.1e+4_fp * (Kw_T / Hplus)
 
       END SELECT
 
