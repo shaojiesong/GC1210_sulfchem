@@ -2627,7 +2627,7 @@
       IF ( AIonStr >= 0.e+0_fp .AND. AIonStr <= 4.e+0_fp ) THEN
          EF = 1.5e+0_fp
       ELSEIF ( AIonStr > 4.e+0_fp ) THEN
-         EF = 1.e+1_fp ** ( log(AIonStr) - 1.2e+0_fp )
+         EF = 1.e+1_fp ** ( 1.04e+0_fp*log(AIonStr) - 1.2e+0_fp )
       ELSE
          CALL ERROR_STOP('error in EF', 'sulfate_mod.f')
       ENDIF

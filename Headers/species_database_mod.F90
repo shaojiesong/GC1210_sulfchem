@@ -960,7 +960,7 @@ CONTAINS
              Henry_K0      = 3.2e+1_f8 * To_M_atm
              Henry_CR      = 6800.0_f8
 #else
-             DD_Hstar_Old  = 3.0e+3_fp
+             DD_Hstar_Old  = 3.2e+3_fp !SJS
              Henry_K0      = 3.2e+3_f8 !SJS
              Henry_CR      = 7100.0_f8 !SJS
 #endif
@@ -3230,7 +3230,6 @@ CONTAINS
              Is_Gas        = F
              Is_Drydep     = T
              Is_Wetdep     = T
-!             Is_HygroGrowth= T
              Density       = 1300.0_fp !the same with OC
              DD_DvzAerSnow = 0.03_fp
              DD_F0         = 0.0_fp
