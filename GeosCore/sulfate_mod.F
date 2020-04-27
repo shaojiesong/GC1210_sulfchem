@@ -2587,7 +2587,7 @@
       !=================================================================
       Ks1    = 1.30e-2_fp * EXP( 6.75e+0_fp
      &                      * ( 298.15e+0_fp / T - 1.e+0_fp ) )
-      Ks2    = 6.31e-8_fp * EXP( 5.05e+0_fp
+      Ks2    = 6.6e-8_fp * EXP( 5.05e+0_fp
      &                      * ( 298.15e+0_fp / T - 1.e+0_fp ) )
 
       ! SIV Fraction
@@ -2595,7 +2595,7 @@
       XSO3 = 1.e+0_fp/(1.e+0_fp+AHplus/Ks2+AHplus*AHplus/(Ks1*Ks2))
 
       ! Henry's constant [mol/l-atm] and Effective Henry's constant for SO2
-      HCSO2  = 1.22e+0_fp * EXP( 10.55e+0_fp
+      HCSO2  = 1.3e+0_fp * EXP( 10.55e+0_fp
      &                      * ( 298.15e+0_fp / T - 1.e+0_fp) )
       FHCSO2 = HCSO2 * (1.e+0_fp + (Ks1/AHplus) +
      &        (Ks1*Ks2 / (AHplus*AHplus)))
@@ -4138,6 +4138,16 @@
             KaqH2O2 = KaqH2O2 * qq
 
             ! gaseous and interfacial limitation
+            IF ( KaqO2 > MINDAT ) THEN
+               XX=1.e+0_fp/(1.e+0_fp/KaqO2+
+     &          RADI/WTAREA/(DFKG_SO2/1.e+4_fp)+
+     &          4.e+0_fp/WTAREA/(XMMS_SO2/1.e+2_fp)/ALPHA_SO2)
+               KaqO2 = MIN( KaqO2, XX )
+               KaqO2 = MAX( 0.e+0_fp, KaqO2 )
+            ELSE
+               KaqO2 = 0.e+0_fp
+            ENDIF
+
             IF ( KaqO3*O30 > MINDAT ) THEN
                XX=1.e+0_fp/(1.e+0_fp/KaqO3+
      &          RADI*O30/WTAREA/(DFKG_SO2/1.e+4_fp)+
@@ -4346,7 +4356,10 @@
             !----------------------------------------------------------
 
             TLS = L2S + L3S + L4S + L5S + L6S + L8S + L9S
-            TK1_2 = TLS * 2.e+0_fp / DT2 / (SO2_2*2.e+0_fp-TLS)
+            TLS = MIN( TLS, SO2_2 )
+            TLS = MAX( TLS, 0.e+0_fp )
+            TK1_2 = ( (1.e+0_fp + TLS/SO2_2)**0.12e+0_fp ) *
+     &              TLS * 2.e+0_fp / DT2 / (SO2_2*2.e+0_fp-TLS)
             ! TK1_2 = log( SO2_2 / (SO2_2-TLS) ) / DT2
             TK1_2 = MAX( TK1_2, 0.e+0_fp )
             ! TK1_2 = MIN( TK1_2, TK1*1.1e+0_fp )
@@ -4415,10 +4428,11 @@
             !----------------------------------------------------------
 
             ! box-average first-order rate vs. HMSA
-            dK0 = FC / ( TauC + 1.e+0_fp/KdHMSA )
+            ! Assume a cloud uptake ratio of 0.7
+            dK0 = FC / ( TauC + 1.e+0_fp/KdHMSA/7.e-1_fp )
             dK0 = MAX( dK0, 0.e+0_fp )
             dK0 = MIN( dK0, FC/TauC )
-            dK0 = MIN( dK0, FC*KdHMSA )
+            dK0 = MIN( dK0, FC*KdHMSA*7.e-1_fp )
 
             ! box-average loss of HMSA
             XX = -1.e+0_fp * dK0 * DT2
@@ -8412,7 +8426,7 @@
       !=================================================================
       Ks1    = 1.30e-2_fp * EXP( 6.75e+0_fp 
      &                      * ( 298.15e+0_fp / T - 1.e+0_fp ) )
-      Ks2    = 6.31e-8_fp * EXP( 5.05e+0_fp 
+      Ks2    = 6.6e-8_fp * EXP( 5.05e+0_fp 
      &                      * ( 298.15e+0_fp / T - 1.e+0_fp ) )
 
       ! SIV Fraction
@@ -8421,7 +8435,7 @@
       XSO3   = 1.e+0_fp/(1.e+0_fp + Hplus/Ks2 + Hplus*Hplus/(Ks1*Ks2))
 
       ! Henry's constant [mol/l-atm] and Effective Henry's constant for SO2
-      HCSO2  = 1.22e+0_fp * EXP( 10.55e+0_fp 
+      HCSO2  = 1.3e+0_fp * EXP( 10.55e+0_fp 
      &                      * ( 298.15e+0_fp / T - 1.e+0_fp) )         
       FHCSO2 = HCSO2 * (1.e+0_fp + (Ks1/Hplus) + 
      &        (Ks1*Ks2 / (Hplus*Hplus)))

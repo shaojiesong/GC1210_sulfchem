@@ -3131,7 +3131,7 @@ CONTAINS
 #else
              DD_Hstar_old  = 1.00e+5_fp
 !GanLuo
-             Henry_K0      = 1.22e+0_fp
+             Henry_K0      = 1.3e+0_fp
              Henry_CR      = 3100.0_f8
 #endif
              WD_AerScavEff = 1.0_fp
