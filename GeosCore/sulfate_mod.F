@@ -4935,6 +4935,15 @@
             CSsav(I,J,L,3) = -1.0e+0_fp * log10(AHPLUS)
             CSsav(I,J,L,4) = AIonStr
 
+            ! SJS-OPTION
+            ! by default, turn off hetchem
+            IF ( 1 > 0 ) THEN
+               SO2_3  = SO2_2
+               HCHO_3 = HCHO_2
+               LH1S   = 0.e+0_fp
+               H2O2_3 = H2O2_2
+            ENDIF
+
          ELSE
 
             ! Otherwise set these traces do not change
