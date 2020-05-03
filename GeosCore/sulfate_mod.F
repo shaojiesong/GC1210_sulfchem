@@ -3213,6 +3213,7 @@
       REAL(fp),  PARAMETER  :: ALPHA_HOBr=  6.e-1_fp
       REAL(fp),  PARAMETER  :: RADI      =  1.e-5_fp !m
       REAL(fp),  PARAMETER  :: TauR      = 1.8e+3_fp !second
+      REAL(fp),  PARAMETER  :: nSO4      = 2.e+0_fp !SJS 20200502
 !
 ! !LOCAL VARIABLES:
 !
@@ -3232,6 +3233,7 @@
       REAL(fp)              :: KaqHOBr, KaqHCHO, KdHMSA, HCHO0 ! SJS
       REAL(fp)              :: KaqHONO, KaqNO2, HONO0, NO20 ! SJS 20190708
       REAL(fp)              :: L8, L9, L8S, L9S ! SJS 20190708
+      REAL(fp)              :: OH01, L7S1, dK1, L7 ! SJS 20200501
       REAL(fp)              :: ALK,    ALK1,    ALK2,    SO2_ss
       REAL(fp)              :: AlkA,   AlkC
       REAL(fp)              :: Kt1,    Kt2
@@ -3273,6 +3275,7 @@
       REAL(fp)              :: KaqO2, L4, L4S, MnII, FeIII
       REAL(fp)              :: DUST,  Mn_ant,  Mn_nat
       REAL(fp)              :: Mn_tot, Mn_d, Fe_d, Mn_d_ant, Mn_d_nat !SJS
+      REAL(fp)              :: KaqOH !SJS
       REAL(fp)              :: Fe_ant, Fe_nat,  Fe_tot
       REAL(fp)              :: Fe_d_ant, Fe_d_nat
 
@@ -3413,7 +3416,7 @@
 !$OMP+PRIVATE( TK1_2, TLS, DT2, TS2, I2, HMSA_2, dK0                   ) !SJS
 !$OMP+PRIVATE( TLS0, L2S0, L3S0, L4S0, L5S0, L6S0, L7S0, L8S0, L9S0    ) !SJS
 !$OMP+PRIVATE( O3_2, H2O2_2, NO2_2, HONO_2, HOBr_2, HCHO_2, SO2_2      ) !SJS
-!$OMP+PRIVATE( H2O2_3, HCHO_3, SO2_3                                   ) !SJS
+!$OMP+PRIVATE( H2O2_3, HCHO_3, SO2_3, OH01, KaqOH, dK1, L7, L7S1       ) !SJS
 !$OMP+SCHEDULE( DYNAMIC )
       DO L = 1, LLPAR 
       DO J = 1, JJPAR
@@ -3444,6 +3447,8 @@
          ! Initial NO2, HONO [v/v], SJS 20190708
          HONO0  = Spc(I,J,L,id_HONO)
          NO20   = Spc(I,J,L,id_NO2)
+         ! OH, SJS 20200501
+         OH01 = Spc(I,J,L,id_OH) * State_Met%AIRNUMDEN(I,J,L)
          IF ( IS_FULLCHEM ) THEN
             ! HOBr is only a defined species in fullchem simulations
             HOBr0  = Spc(I,J,L,id_HOBr) !(qjc, 01/30/17)
@@ -3694,9 +3699,13 @@
          KaqH2O2 = 0.e+0_fp
          KaqHCHO = 0.e+0_fp ! SJS 20190608
          KaqHOBr = 0.e+0_fp ! SJS 20200201
+         KaqOH   = 0.e+0_fp ! SJS 20200501
          L2      = 0.e+0_fp
          L3      = 0.e+0_fp
          L4      = 0.e+0_fp
+         L7      = 0.e+0_fp ! SJS 20200502
+         L7S1    = 0.e+0_fp ! SJS 20200502
+         dK1     = 0.e+0_fp ! SJS 20200502
          L6      = 0.e+0_fp ! SJS 20190610
          L8      = 0.e+0_fp ! SJS 20190708
          L9      = 0.e+0_fp
@@ -4098,11 +4107,11 @@
             ! Do not need use O3 and H2O2, SJS 20190608
             ! Add NO2 and HONO rxn rates, SJS 20190708
             CALL AQCHEM_SO2( LWC,     TK,    PATM,    SO2_ss,
-     &                       HPLUS, IonStr,  MnII,    FeIII,
+     &                       HPLUS, IonStr,  MnII,    FeIII,   OH01,
      &                       KaqH2O2, KaqO3, KaqO2,
      &                       KaqHCHO, KdHMSA,
      &                       KaqHONO, KaqNO2, KaqHOBr,
-     &                       HSO3aq,  SO3aq,
+     &                       KaqOH,   HSO3aq,  SO3aq,
      &                       KHCHO2,  Qcst )
 
             ! Store HSO3aq, SO3aq for use in gckpp_HetRates.F90
@@ -4236,6 +4245,7 @@
             SO2_2  = SO2_ss
             HMSA_2 = HMSA0
             L4     = 0.e+0_fp
+            L7     = 0.e+0_fp
             I2     = 0
 
             DO WHILE ( (I2 < TS2) .AND. (SO2_2 > MINDAT*1.1e+0_fp) )
@@ -4443,397 +4453,45 @@
             ENDIF
 
             !----------------------------------------------------------
-            ! Update box-average concentrations [v/v]
+            ! Estimate box-average first-order rate vs. HMSA + OH
             !----------------------------------------------------------
 
-            SO2_2   = MAX( SO2_2  + L7S0 - TLS0, MINDAT )
-            O3_2    = MAX( O3_2   - L3S0, MINDAT )
-            H2O2_2  = MAX( H2O2_2 - L2S0, MINDAT )
-            HONO_2  = MAX( HONO_2 + 2.e+0_fp*L9S0 - L8S0, MINDAT )
-            NO2_2   = MAX( NO2_2  - 2.e+0_fp*L9S0, MINDAT )
-            HCHO_2  = MAX( HCHO_2 + L7S0 - L6S0, MINDAT )
-            HMSA_2  = MAX( HMSA_2 - L7S0 + L6S0, MINDAT )
-            HOBr_2  = MAX( HOBr_2 - L5S0, MINDAT )
-            L4      = MAX( L4     + L4S0, MINDAT )
-            I2      = I2 + 1
-
-            ENDDO ! finish when TS2=DTCHEM/DT2
-
-            ! SJS-OPTION
-            ! using new cloud pH to redo calculation
-            IF ( -1 > 0 ) THEN
-
-            ! update SO4 and HMSA to estimate pH
-            SO4nss = ( Spc(I,J,L,id_SO4) + 0.5e+0_fp * (
-     &               SO2_ss+HMSA0-SO2_2-HMSA_2 ) / FC )
-     &               * State_Met%AIRDEN(I,J,L) *
-     &               0.7e+0_fp / ( AIRMW * LWC )
-
-            ! Get HMSA and convert from [v/v] to moles/liter]
-            THMSA = ( Spc(I,J,L,id_HMSA) + 0.5e+0_fp * (
-     &              HMSA_2-HMSA0 ) / FC )
-     &              * State_Met%AIRDEN(I,J,L) *
-     &              0.7e+0_fp / ( AIRMW * LWC )
-
-            CALL GET_HPLUS_NEW( SO4nss,THMSA,TNVC,TNH3,TNO3,TSO2,
-     &           TFAA, TAAA, TMSA, TNO2,
-     &           TCL, TNA, TK, PATM, LWC, HPLUS_45, HPLUS, IonStr )
-
-            ! Store the cloud pH
-            pHCloud(I,J,L) = -1.0e+0_fp * log10(HPLUS)
-            ISCloud(I,J,L) = IonStr
-
-            ! Compute aqueous rxn rates for SO2
-            CALL AQCHEM_SO2( LWC,     TK,    PATM,    SO2_ss,
-     &                       HPLUS, IonStr,  MnII,    FeIII,
-     &                       KaqH2O2, KaqO3, KaqO2,
-     &                       KaqHCHO, KdHMSA,
-     &                       KaqHONO, KaqNO2, KaqHOBr,
-     &                       HSO3aq,  SO3aq,
-     &                       KHCHO2,  Qcst )
-
-            ! Store HSO3aq, SO3aq for use in gckpp_HetRates.F90
-            State_Chm%HSO3_AQ(I,J,L) = HSO3aq
-            State_Chm%SO3_AQ(I,J,L)  = SO3aq
-
-            ! TK == first-order rate with SO2 [s-1]
-            ! Estimate aqueous-phase transport limitation
-            TK1 = KaqO2 + O30*KaqO3 + H2O20*KaqH2O2 +
-     &            NO20*KaqNO2 + HONO0*KaqHONO +
-     &            HOBr0*KaqHOBr + HCHO0*KaqHCHO
-
-            q = 3.2e-1_fp * SQRT( SAFE_DIV( TK1, Qcst, 0e+0_fp ) )
-            IF ( q >= 0.e+0_fp .AND. q <= 0.5e+0_fp ) THEN
-               qq = 1.e+0_fp
-            ELSEIF ( q > 0.5e+0_fp .AND. q <= 4.e+0_fp ) THEN
-               qq = -0.12e+0_fp * q + 1.05e+0_fp
-            ELSEIF ( q > 4.e+0_fp .AND. q <= 12.e+0_fp ) THEN
-               qq = 1.84e+0_fp * ( q ** (-0.84e+0_fp) )
-            ELSEIF ( q > 12.e+0_fp ) THEN
-               qq = 2.89e+0_fp * ( q ** (-1.e+0_fp) )
-            ELSE
-               CALL ERROR_STOP('error in qq', 'sulfate_mod.f')
-            ENDIF
-
-            ! Adjust aqueous-phase transport limitation
-            KaqO2   = KaqO2   * qq
-            KaqO3   = KaqO3   * qq
-            KaqNO2  = KaqNO2  * qq
-            KaqHONO = KaqHONO * qq
-            KaqHCHO = KaqHCHO * qq
-            KaqHOBr = KaqHOBr * qq
-            KaqH2O2 = KaqH2O2 * qq
-
-            ! gaseous and interfacial limitation
-            IF ( KaqO3*O30 > MINDAT ) THEN
-               XX=1.e+0_fp/(1.e+0_fp/KaqO3+
-     &          RADI*O30/WTAREA/(DFKG_SO2/1.e+4_fp)+
-     &          4.e+0_fp*O30/WTAREA/(XMMS_SO2/1.e+2_fp)/ALPHA_SO2)
-               XY=1.e+0_fp/(1.e+0_fp/KaqO3+
-     &          RADI*SO2_ss/WTAREA/(DFKG_O3/1.e+4_fp)+
-     &          4.e+0_fp*SO2_ss/WTAREA/(XMMS_O3/1.e+2_fp)/ALPHA_O3)
-               KaqO3 = MIN( KaqO3, XX, XY )
-               KaqO3 = MAX( 0.e+0_fp, KaqO3 )
-            ELSE
-               KaqO3 = 0.e+0_fp
-            ENDIF
-
-            IF ( KaqNO2*NO20 > MINDAT ) THEN
-               XX=1.e+0_fp/(1.e+0_fp/KaqNO2+
-     &          RADI*NO20/WTAREA/(DFKG_SO2/1.e+4_fp)+
-     &          4.e+0_fp*NO20/WTAREA/(XMMS_SO2/1.e+2_fp)/ALPHA_SO2)
-               XY=1.e+0_fp/(1.e+0_fp/KaqNO2+
-     &          RADI*SO2_ss/WTAREA/(DFKG_NO2/1.e+4_fp)+
-     &          4.e+0_fp*SO2_ss/WTAREA/(XMMS_NO2/1.e+2_fp)/ALPHA_NO2)
-               KaqNO2 = MIN( KaqNO2, XX, XY )
-               KaqNO2 = MAX( 0.e+0_fp, KaqNO2 )
-            ELSE
-               KaqNO2 = 0.e+0_fp
-            ENDIF
-
-            IF ( KaqHONO*HONO0 > MINDAT ) THEN
-               XX=1.e+0_fp/(1.e+0_fp/KaqHONO+
-     &          RADI*HONO0/WTAREA/(DFKG_SO2/1.e+4_fp)+
-     &          4.e+0_fp*HONO0/WTAREA/(XMMS_SO2/1.e+2_fp)/ALPHA_SO2)
-               XY=1.e+0_fp/(1.e+0_fp/KaqHONO+
-     &          RADI*SO2_ss/WTAREA/(DFKG_HONO/1.e+4_fp)+
-     &          4.e+0_fp*SO2_ss/WTAREA/(XMMS_HONO/1.e+2_fp)/ALPHA_HONO)
-               KaqHONO = MIN( KaqHONO, XX, XY )
-               KaqHONO = MAX( 0.e+0_fp, KaqHONO )
-            ELSE
-               KaqHONO = 0.e+0_fp
-            ENDIF
-
-            IF ( KaqH2O2*H2O20 > MINDAT ) THEN
-               XX=1.e+0_fp/(1.e+0_fp/KaqH2O2+
-     &          RADI*H2O20/WTAREA/(DFKG_SO2/1.e+4_fp)+
-     &          4.e+0_fp*H2O20/WTAREA/(XMMS_SO2/1.e+2_fp)/ALPHA_SO2)
-               XY=1.e+0_fp/(1.e+0_fp/KaqH2O2+
-     &          RADI*SO2_ss/WTAREA/(DFKG_H2O2/1.e+4_fp)+
-     &          4.e+0_fp*SO2_ss/WTAREA/(XMMS_H2O2/1.e+2_fp)/ALPHA_H2O2)
-               KaqH2O2 = MIN( KaqH2O2, XX, XY )
-               KaqH2O2 = MAX( 0.e+0_fp, KaqH2O2 )
-            ELSE
-               KaqH2O2 = 0.e+0_fp
-            ENDIF
-
-            IF ( KaqHOBr*HOBr0 > MINDAT ) THEN
-               XX=1.e+0_fp/(1.e+0_fp/KaqHOBr+
-     &          RADI*HOBr0/WTAREA/(DFKG_SO2/1.e+4_fp)+
-     &          4.e+0_fp*HOBr0/WTAREA/(XMMS_SO2/1.e+2_fp)/ALPHA_SO2)
-               XY=1.e+0_fp/(1.e+0_fp/KaqHOBr+
-     &          RADI*SO2_ss/WTAREA/(DFKG_HOBr/1.e+4_fp)+
-     &          4.e+0_fp*SO2_ss/WTAREA/(XMMS_HOBr/1.e+2_fp)/ALPHA_HOBr)
-               KaqHOBr = MIN( KaqHOBr, XX, XY )
-               KaqHOBr = MAX( 0.e+0_fp, KaqHOBr )
-            ELSE
-               KaqHOBr = 0.e+0_fp
-            ENDIF
-
-            IF ( KaqHCHO*HCHO0 > MINDAT ) THEN
-               XX=1.e+0_fp/(1.e+0_fp/KaqHCHO+
-     &          RADI*HCHO0/WTAREA/(DFKG_SO2/1.e+4_fp)+
-     &          4.e+0_fp*HCHO0/WTAREA/(XMMS_SO2/1.e+2_fp)/ALPHA_SO2)
-               XY=1.e+0_fp/(1.e+0_fp/KaqHCHO+
-     &          RADI*SO2_ss/WTAREA/(DFKG_HCHO/1.e+4_fp)+
-     &          4.e+0_fp*SO2_ss/WTAREA/(XMMS_HCHO/1.e+2_fp)/ALPHA_HCHO)
-               KaqHCHO = MIN( KaqHCHO, XX, XY )
-               KaqHCHO = MAX( 0.e+0_fp, KaqHCHO )
-            ELSE
-               KaqHCHO = 0.e+0_fp
-            ENDIF
-
-            ! Initialize
-            O3_2   = O30
-            H2O2_2 = H2O20
-            NO2_2  = NO20
-            HONO_2 = HONO0
-            HOBr_2 = HOBr0
-            HCHO_2 = HCHO0
-            SO2_2  = SO2_ss
-            HMSA_2 = HMSA0
-            L4     = 0.e+0_fp
-            I2     = 0
-
-            DO WHILE ( (I2 < TS2) .AND. (SO2_2 > MINDAT*1.1e+0_fp) )
-
-            TK1 = KaqO2 + O3_2*KaqO3 + H2O2_2*KaqH2O2 +
-     &            NO2_2*KaqNO2 + HONO_2*KaqHONO +
-     &            HOBr_2*KaqHOBr + HCHO_2*KaqHCHO
-
-            IF ( TK1 < 1.e+0_fp/DT2 ) THEN
-
-            !----------------------------------------------------------
-            ! Compute formation of HMSA (SO2 + HCHO => HMSA)
-            !----------------------------------------------------------
-
-            ! Argument of the exponential
-            XX = ( SO2_2 - HCHO_2 ) * KaqHCHO * DT2
-            IF ( ABS( XX ) > 0e+0_fp ) THEN
-               L6  = EXP( XX )
-               L6S = SO2_2 * HCHO_2 *
-     &              (L6 - 1.e+0_fp)/((SO2_2 * L6) - HCHO_2)
-            ELSE
-               ! different solution when SO2 = HCHO
-               L6S = SO2_2 - 1/(KaqHCHO*DT2+1/SO2_2)
-            ENDIF
-
-            !----------------------------------------------------------
-            ! Compute loss by HONO
-            !----------------------------------------------------------
-
-            XX  = ( SO2_2 - HONO_2 ) * KaqHONO * DT2
-            IF ( ABS( XX ) > 0e+0_fp ) THEN
-               L8  = EXP( XX )
-               L8S = SO2_2 * HONO_2 * ( L8 - 1.e+0_fp ) /
-     &               ( (SO2_2 * L8) - HONO_2 )
-            ELSE
-               ! different solution when SO2 = HONO
-               L8S = SO2_2 - 1/(KaqHONO*DT2+1/SO2_2)
-            ENDIF
-
-            !----------------------------------------------------------
-            ! Compute loss by NO2
-            !----------------------------------------------------------
-
-            ! Argument of the exponential
-            XX  = ( SO2_2 - NO2_2 ) * KaqNO2 * DT2
-            IF ( ABS( XX ) > 0e+0_fp ) THEN
-               L9  = EXP( XX )
-               L9S = SO2_2 * NO2_2 * ( L9 - 1.e+0_fp ) /
-     &               ( (SO2_2 * L9) - NO2_2 )
-            ELSE
-               ! different solution when SO2 = NO2
-               L9S = SO2_2 - 1/(KaqNO2*DT2+1/SO2_2)
-            ENDIF
-
-            !----------------------------------------------------------
-            ! Compute loss by H2O2
-            !----------------------------------------------------------
-
-            ! Argument of the exponential
-            XX  = ( SO2_2 - H2O2_2 ) * KaqH2O2 * DT2
-            IF ( ABS( XX ) > 0e+0_fp ) THEN
-               L2  = EXP( XX )
-               L2S = SO2_2 * H2O2_2 * ( L2 - 1.e+0_fp ) /
-     &               ( (SO2_2 * L2) - H2O2_2 )
-            ELSE
-               ! different solution when SO2 = H2O2
-               L2S = SO2_2 - 1/(KaqH2O2*DT2+1/SO2_2)
-            ENDIF
-
-            !----------------------------------------------------------
-            ! Compute loss by O3
-            !----------------------------------------------------------
-
-            ! Argument of the exponential
-            XX = ( SO2_2 - O3_2 ) * KaqO3 * DT2
-            IF ( ABS( XX ) > 0e+0_fp ) THEN
-               L3  = EXP( XX )
-               L3S = SO2_2 * O3_2 * (L3 - 1.e+0_fp) /
-     &               ((SO2_2 * L3) - O3_2)
-            ELSE
-               ! different solution when SO2 = O3
-               L3S = SO2_2 - 1/(KaqO3*DT2+1/SO2_2)
-            ENDIF
-
-            !--------------------------------------------------------
-            ! Metal catalyzed oxidation of SO2 pathway
-            !----------------------------------------------------------
-
-            IF ( Input_Opt%LMETALCATSO2 ) THEN
-
-               ! Argument of the exponential
-               XX = -1.e+0_fp * KaqO2 * DT2
-               L4S = SO2_2 * ( 1.e+0_fp - EXP(XX) )
-
-            ELSE
-
-               ! Set loss by O2 to zero
-               L4S = 0.0e+0_fp
-
-            ENDIF
-
-            !----------------------------------------------------------
-            ! Compute loss by HOBr
-            !----------------------------------------------------------
-
-            ! Argument of the exponential
-            XX = ( SO2_2 - HOBr_2 ) * KaqHOBr * DT2
-            IF ( ABS( XX ) > 0e+0_fp ) THEN
-               L5S = SO2_2 * HOBr_2 * ( EXP(XX) - 1.e+0_fp ) /
-     &               ( (SO2_2 * EXP(XX)) - HOBr_2 )
-            ELSE
-               ! different solution when SO2 = HOBr
-               L5S = SO2_2 - 1/(KaqHOBr*DT2+1/SO2_2)
-            ENDIF
-
-            !----------------------------------------------------------
-            ! Estimate in-cloud first-order rate vs. SO2
-            !----------------------------------------------------------
-
-            TLS = L2S + L3S + L4S + L5S + L6S + L8S + L9S
-            TK1_2 = TLS * 2.e+0_fp / DT2 / (SO2_2*2.e+0_fp-TLS)
-            ! TK1_2 = log( SO2_2 / (SO2_2-TLS) ) / DT2
-            TK1_2 = MAX( TK1_2, 0.e+0_fp )
-            ! TK1_2 = MIN( TK1_2, TK1*1.1e+0_fp )
-
-            ELSE ! TK1 > 1.e+0_fp/DT2
-
-               ! SAN JIA FEN JIN
-               XX = O3_2 + HCHO_2 + HOBr_2
-               IF ( XX < SO2_2 ) THEN
-                  TK1_2 = TK1 * ( XX / SO2_2 )
-               ELSE
-                  TK1_2 = TK1
-               ENDIF
-
-               XX = (HCHO_2*KaqHCHO/TK1)*SO2_2
-               IF ( XX > HCHO_2 ) THEN
-                  L6S = HCHO_2
-               ELSE
-                  L6S = XX
-               ENDIF
-
-               XX = (HOBr_2*KaqHOBr/TK1)*SO2_2
-               IF ( XX > HOBr_2 ) THEN
-                  L5S = HOBr_2
-               ELSE
-                  L5S = XX
-               ENDIF
-
-               L3S = MAX( SO2_2-L5S-L6S, 0.e+0_fp )
-               L2S = 0.e+0_fp
-               L4S = 0.e+0_fp
-               L8S = 0.e+0_fp
-               L9S = 0.e+0_fp
-               TLS = L2S + L3S + L4S + L5S + L6S + L8S + L9S
-
-            ENDIF ! TK1 vs. 1/DT2
-
-            !----------------------------------------------------------
-            ! Estimate box-average first-order rate vs. SO2
-            !----------------------------------------------------------
-
-            ! box-average first-order rate vs. SO2
-            TK0 = FC / ( TauC + 1.e+0_fp/TK1_2 )
-            TK0 = MAX( TK0, 0.e+0_fp )
-            TK0 = MIN( TK0, FC/TauC )
-            TK0 = MIN( TK0, FC*TK1_2 )
-
-            ! box-average loss of SO2
-            XX = -1.e+0_fp * TK0 * DT2
-            IF ( IS_SAFE_EXP( XX ) ) THEN
-               TLS0 = SO2_2 * ( 1.e+0_fp - EXP(XX) )
-            ELSE
-               TLS0 = SO2_2
-            ENDIF
-
-            L2S0 = TLS0 * ( L2S / TLS )
-            L3S0 = TLS0 * ( L3S / TLS )
-            L4S0 = TLS0 * ( L4S / TLS )
-            L5S0 = TLS0 * ( L5S / TLS )
-            L6S0 = TLS0 * ( L6S / TLS )
-            L8S0 = TLS0 * ( L8S / TLS )
-            L9S0 = TLS0 * ( L9S / TLS )
-
-            !----------------------------------------------------------
-            ! Estimate box-average first-order rate vs. HMSA
-            !----------------------------------------------------------
-
-            ! box-average first-order rate vs. HMSA
-            dK0 = FC / ( TauC + 1.e+0_fp/KdHMSA )
-            dK0 = MAX( dK0, 0.e+0_fp )
-            dK0 = MIN( dK0, FC/TauC )
-            dK0 = MIN( dK0, FC*KdHMSA )
+            ! box-average first-order rate vs. HMSA + OH
+            ! Assume a cloud uptake ratio of 0.7
+            dK1 = FC / ( TauC + 1.e+0_fp/KaqOH/7.e-1_fp )
+            dK1 = MAX( dK1, 0.e+0_fp )
+            dK1 = MIN( dK1, FC/TauC )
+            dK1 = MIN( dK1, FC*KaqOH*7.e-1_fp )
 
             ! box-average loss of HMSA
-            XX = -1.e+0_fp * dK0 * DT2
+            XX = -1.e+0_fp * dK1 * DT2
             IF ( IS_SAFE_EXP( XX ) ) THEN
-               L7S0 = HMSA_2 * ( 1.e+0_fp - EXP(XX) )
+               L7S1 = HMSA_2 * ( 1.e+0_fp - EXP(XX) )
             ELSE
-               L7S0 = HMSA_2
+               L7S1 = HMSA_2
             ENDIF
 
             !----------------------------------------------------------
             ! Update box-average concentrations [v/v]
             !----------------------------------------------------------
 
-            SO2_2   = MAX( SO2_2  + L7S0 - TLS0, MINDAT )
+            IF ( nSO4 > 1.e+0_fp ) THEN
+            SO2_2 = MAX( SO2_2+L7S0-TLS0-L7S1*(nSO4-1.e+0_fp), MINDAT )
+            ELSE
+            SO2_2 = MAX( SO2_2+L7S0-TLS0, MINDAT )
+            ENDIF
             O3_2    = MAX( O3_2   - L3S0, MINDAT )
             H2O2_2  = MAX( H2O2_2 - L2S0, MINDAT )
             HONO_2  = MAX( HONO_2 + 2.e+0_fp*L9S0 - L8S0, MINDAT )
             NO2_2   = MAX( NO2_2  - 2.e+0_fp*L9S0, MINDAT )
-            HCHO_2  = MAX( HCHO_2 + L7S0 - L6S0, MINDAT )
-            HMSA_2  = MAX( HMSA_2 - L7S0 + L6S0, MINDAT )
+            HCHO_2  = MAX( HCHO_2 + L7S0 + L7S1 - L6S0, MINDAT )
+            HMSA_2  = MAX( HMSA_2 - L7S0 - L7S1 + L6S0, MINDAT )
             HOBr_2  = MAX( HOBr_2 - L5S0, MINDAT )
             L4      = MAX( L4     + L4S0, MINDAT )
+            L7      = MAX( L7     + L7S1*nSO4, MINDAT )
             I2      = I2 + 1
 
             ENDDO ! finish when TS2=DTCHEM/DT2
-
-            ENDIF
-            ! END using new cloud pH to redo calculation
 
          ELSE
 
@@ -4847,6 +4505,7 @@
             HCHO_2  = MAX( HCHO0,  MINDAT )
             HMSA_2  = MAX( HMSA0,  MINDAT )
             L4      = 0.e+0_fp
+            L7      = 0.e+0_fp
             HPLUS   = 0.e+0_fp
             IonStr  = 0.e+0_fp
 
@@ -4966,11 +4625,11 @@
 
          ! SO2 chemical loss rate  = SO4 production rate [v/v/timestep]
          PSO4P1_SO2(I,J,L) = 1.5e+0_fp*(NO20-NO2_2) + HONO0-HONO_2
-         PSO4P2_SO2(I,J,L) = H2O20-H2O2_2
+         PSO4P2_SO2(I,J,L) = H2O20-H2O2_3
          PSO4P3_SO2(I,J,L) = O30-O3_2
          PSO4P4_SO2(I,J,L) = L4
          PSO4P5_SO2(I,J,L) = PSO4E + HOBr0-HOBr_2
-         PSO4P6_SO2(I,J,L) = H2O2_2-H2O2_3
+         PSO4P6_SO2(I,J,L) = L7
          PSO4P7_SO2(I,J,L) = LH1S
          PHMSA_SO2(I,J,L)  = HCHO0-HCHO_3
          PHMSC_SO2(I,J,L)  = HCHO0-HCHO_2
@@ -8296,11 +7955,11 @@
 ! !INTERFACE:
 !
       SUBROUTINE AQCHEM_SO2( LWC,     T,     P,       SO2, 
-     &                       Hplus, Ionstr,  MnII,  FeIII, 
+     &                       Hplus, Ionstr,  MnII,  FeIII, OH,
      &                       KaqH2O2, KaqO3, KaqO2,
      &                       KaqHCHO, KdHMSA, ! SJS 20190607
      &                       KaqHONO, KaqNO2, KaqHOBr, ! SJS 20190708
-     &                       HSO3aq,  SO3aq,
+     &                       KaqOH,   HSO3aq,  SO3aq,
      &                       KHCHO2,  Qcst )
 !
 ! !INPUT PARAMETERS: 
@@ -8315,6 +7974,7 @@
       REAL(fp), INTENT(IN)  :: Ionstr  ! Ionic strength [mole/l]
       REAL(fp), INTENT(IN)  :: MnII    ! Concentration of MnII [mole/l]
       REAL(fp), INTENT(IN)  :: FeIII   ! Concentration of FeIII [mole/l]
+      REAL(fp), INTENT(IN)  :: OH      ! [molecule/cm3]
 !
 ! !OUTPUT PARAMETERS: 
 !
@@ -8325,6 +7985,7 @@
       REAL(fp), INTENT(OUT) :: KaqHONO ! Reaction rate for HONO [v/v/s] (SJS 20190708)
       REAL(fp), INTENT(OUT) :: KaqHOBr ! Reaction rate for HOBr [v/v/s] (SJS 20200201)
       REAL(fp), INTENT(OUT) :: KdHMSA  ! Decomposition [/s] (SJS 20190608)
+      REAL(fp), INTENT(OUT) :: KaqOH   ! HMSA+OH [/s] (SJS 20200501)
       REAL(fp), INTENT(OUT) :: KaqO2   ! Reaction rate for O2 (metal cat)
       REAL(fp), INTENT(OUT) :: HSO3aq  ! Cloud bisulfite [mol/l] (qjc, 06/10/16)
       REAL(fp), INTENT(OUT) :: SO3aq   ! Cloud sulfite   [mol/l] (qjc, 06/10/16)
@@ -8562,6 +8223,14 @@
      &      * P * LWC * R * T
      &      * 1.3e+2_fp
      &      * 1.e+0_fp / ( 1.e+0_fp + ( 1.3e+2_fp * R * T * LWC ) )
+
+      !=================================================================
+      !  Aqueous reactions of HMSA with OH, SJS 20200501
+      !  HMSA + OH => HCHO + SO5-'
+      !=================================================================
+
+      ! K = 2.7x10^8 M-1 s-1 * 4*10^-20 M cm3 molecule-1 * [molecule cm-3]
+      KaqOH = 2.7e+8_fp * 4.e-20_fp * OH ! 1/s
 
       !=================================================================
       !  Aqueous reactions of SO2 with HCHO, SJS 20190607
@@ -9645,7 +9314,7 @@
 !
 ! !LOCAL VARIABLES:
 !
-      REAL(fp)            :: OH_MOLEC_CM3
+      REAL(fp)            :: OH_MOLEC_CM3, MolecRatio
  
       !=================================================================
       ! GET_OH begins here!
@@ -9657,10 +9326,15 @@
          ! Coupled simulation
          !---------------------
 
-         ! Take OH from State_Chm%Species [molec/cm3]
          ! OH is defined only in the chemistry grid
          IF ( State_Met%InChemGrid(I,J,L) ) THEN
+
+            ! Get OH from State_Chm%Species [v/v] converted to
+            ! [molec/cm3]
+            MolecRatio = State_Chm%SpcData(id_OH)%Info%MolecRatio
             OH_MOLEC_CM3 = State_Chm%Species(I,J,L,id_OH)
+     &                     * State_Met%AIRDEN(I,J,L) * 1e-3_fp * AVO
+     &                     / ( AIRMW * MolecRatio )
          ELSE
             OH_MOLEC_CM3 = 0e+0_fp
          ENDIF
