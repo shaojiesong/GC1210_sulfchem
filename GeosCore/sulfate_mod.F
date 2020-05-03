@@ -2956,7 +2956,7 @@
          KLH1      = 0.e+0_fp
          KhetHCHO  = 0.e+0_fp
          KhetdHMSA = 0.e+0_fp
-         KhetH2O2  = 0.e+0_fp
+!         KhetH2O2  = 0.e+0_fp
       ENDIF
 
       DO WHILE ( (I2 < TS2) .AND. (SO2_2 > MINDAT*1.1e+0_fp) )
@@ -4412,26 +4412,40 @@
             !----------------------------------------------------------
 
             ! box-average first-order rate vs. SO2
-            TK0 = FC / ( TauC + 1.e+0_fp/TK1_2 )
-            TK0 = MAX( TK0, 0.e+0_fp )
-            TK0 = MIN( TK0, FC/TauC )
-            TK0 = MIN( TK0, FC*TK1_2 )
+            IF ( TK1_2 > MINDAT ) THEN
+               TK0 = FC / ( TauC + 1.e+0_fp/TK1_2 )
+               TK0 = MAX( TK0, 0.e+0_fp )
+               TK0 = MIN( TK0, FC/TauC )
+               TK0 = MIN( TK0, FC*TK1_2 )
 
-            ! box-average loss of SO2
-            XX = -1.e+0_fp * TK0 * DT2
-            IF ( IS_SAFE_EXP( XX ) ) THEN
-               TLS0 = SO2_2 * ( 1.e+0_fp - EXP(XX) )
+               ! box-average loss of SO2
+               XX = -1.e+0_fp * TK0 * DT2
+               IF ( IS_SAFE_EXP( XX ) ) THEN
+                  TLS0 = SO2_2 * ( 1.e+0_fp - EXP(XX) )
+               ELSE
+                  TLS0 = SO2_2
+               ENDIF
             ELSE
-               TLS0 = SO2_2
+               TLS0 = 0.e+0_fp
             ENDIF
 
-            L2S0 = TLS0 * ( L2S / TLS )
-            L3S0 = TLS0 * ( L3S / TLS )
-            L4S0 = TLS0 * ( L4S / TLS )
-            L5S0 = TLS0 * ( L5S / TLS )
-            L6S0 = TLS0 * ( L6S / TLS )
-            L8S0 = TLS0 * ( L8S / TLS )
-            L9S0 = TLS0 * ( L9S / TLS )
+            IF ( TLS > MINDAT ) THEN
+               L2S0 = TLS0 * ( L2S / TLS )
+               L3S0 = TLS0 * ( L3S / TLS )
+               L4S0 = TLS0 * ( L4S / TLS )
+               L5S0 = TLS0 * ( L5S / TLS )
+               L6S0 = TLS0 * ( L6S / TLS )
+               L8S0 = TLS0 * ( L8S / TLS )
+               L9S0 = TLS0 * ( L9S / TLS )
+            ELSE
+               L2S0 = 0.e+0_fp
+               L3S0 = 0.e+0_fp
+               L4S0 = 0.e+0_fp
+               L5S0 = 0.e+0_fp
+               L6S0 = 0.e+0_fp
+               L8S0 = 0.e+0_fp
+               L9S0 = 0.e+0_fp
+            ENDIF
 
             !----------------------------------------------------------
             ! Estimate box-average first-order rate vs. HMSA
@@ -4439,17 +4453,21 @@
 
             ! box-average first-order rate vs. HMSA
             ! Assume a cloud uptake ratio of 0.7
-            dK0 = FC / ( TauC + 1.e+0_fp/KdHMSA/7.e-1_fp )
-            dK0 = MAX( dK0, 0.e+0_fp )
-            dK0 = MIN( dK0, FC/TauC )
-            dK0 = MIN( dK0, FC*KdHMSA*7.e-1_fp )
+            IF ( KdHMSA > MINDAT ) THEN
+               dK0 = FC / ( TauC + 1.e+0_fp/KdHMSA/7.e-1_fp )
+               dK0 = MAX( dK0, 0.e+0_fp )
+               dK0 = MIN( dK0, FC/TauC )
+               dK0 = MIN( dK0, FC*KdHMSA*7.e-1_fp )
 
-            ! box-average loss of HMSA
-            XX = -1.e+0_fp * dK0 * DT2
-            IF ( IS_SAFE_EXP( XX ) ) THEN
-               L7S0 = HMSA_2 * ( 1.e+0_fp - EXP(XX) )
+               ! box-average loss of HMSA
+               XX = -1.e+0_fp * dK0 * DT2
+               IF ( IS_SAFE_EXP( XX ) ) THEN
+                  L7S0 = HMSA_2 * ( 1.e+0_fp - EXP(XX) )
+               ELSE
+                  L7S0 = HMSA_2
+               ENDIF
             ELSE
-               L7S0 = HMSA_2
+               L7S0 = 0.e+0_fp
             ENDIF
 
             !----------------------------------------------------------
@@ -4458,17 +4476,21 @@
 
             ! box-average first-order rate vs. HMSA + OH
             ! Assume a cloud uptake ratio of 0.7
-            dK1 = FC / ( TauC + 1.e+0_fp/KaqOH/7.e-1_fp )
-            dK1 = MAX( dK1, 0.e+0_fp )
-            dK1 = MIN( dK1, FC/TauC )
-            dK1 = MIN( dK1, FC*KaqOH*7.e-1_fp )
+            IF ( KaqOH > MINDAT ) THEN
+               dK1 = FC / ( TauC + 1.e+0_fp/KaqOH/7.e-1_fp )
+               dK1 = MAX( dK1, 0.e+0_fp )
+               dK1 = MIN( dK1, FC/TauC )
+               dK1 = MIN( dK1, FC*KaqOH*7.e-1_fp )
 
-            ! box-average loss of HMSA
-            XX = -1.e+0_fp * dK1 * DT2
-            IF ( IS_SAFE_EXP( XX ) ) THEN
-               L7S1 = HMSA_2 * ( 1.e+0_fp - EXP(XX) )
+               ! box-average loss of HMSA
+               XX = -1.e+0_fp * dK1 * DT2
+               IF ( IS_SAFE_EXP( XX ) ) THEN
+                  L7S1 = HMSA_2 * ( 1.e+0_fp - EXP(XX) )
+               ELSE
+                  L7S1 = HMSA_2
+               ENDIF
             ELSE
-               L7S1 = HMSA_2
+               L7S1 = 0.e+0_fp
             ENDIF
 
             !----------------------------------------------------------
@@ -4597,10 +4619,10 @@
             ! SJS-OPTION
             ! by default, turn off hetchem
             IF ( 1 > 0 ) THEN
-               SO2_3  = SO2_2
+!               SO2_3  = SO2_2
                HCHO_3 = HCHO_2
                LH1S   = 0.e+0_fp
-               H2O2_3 = H2O2_2
+!               H2O2_3 = H2O2_2
             ENDIF
 
          ELSE
