@@ -1,5 +1,15 @@
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1343546.svg)](https://doi.org/10.5281/zenodo.1343546) [![Build
-Status](https://travis-ci.org/JiaweiZhuang/geos-chem.svg?branch=travis_ci)](https://travis-ci.org/JiaweiZhuang/geos-chem)
+# Shaojie Song June 15th 2020
+This version is the code used in Song et al. (2020), in prep for Atmospheric Chemistry and Physics Discussions
+There is a link in this paper pointing to this folder
+I will update the status of the paper regularly
+
+# README for the changes in the code made in this version
+
+Changes related sulfur chemistry are made based on the standard GEOS-Chem version 12.1.0:
+(a) Applying most wet process changes from Gan Luo's two papers: https://doi.org/10.5194/gmd-2020-11 and https://doi.org/10.5194/gmd-12-3439-2019
+(b) Adding cloud HMS chemistry and cloud reactions of SO2 with HONO and NO2
+(c) Improving treatments of entrainment/detrainment and heterogeneous cloud sulfur chemistry
+(d) Adding aerosol water reaction of SO2 with H2O2 and HMS chemistry
 
 # README for the GEOS-Chem Source code repository
 
