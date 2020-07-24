@@ -1,4 +1,8 @@
 # Shaojie Song June 15th 2020
+This version is the code used in Song, S., Ma, T., Zhang, Y., Shen, L., Liu, P., Li, K., Zhai, S., Zheng, H., Gao, M., Duan, F., He, K., and McElroy, M. B.: Global modeling of heterogeneous hydroxymethanesulfonate chemistry, Atmos. Chem. Phys. Discuss., https://doi.org/10.5194/acp-2020-643, in review, 2020.
+There is a link in this paper pointing to this folder
+
+# Shaojie Song June 15th 2020
 This version is the code used in Song et al. (2020), in prep for Atmospheric Chemistry and Physics Discussions
 There is a link in this paper pointing to this folder
 I will update the status of the paper regularly
